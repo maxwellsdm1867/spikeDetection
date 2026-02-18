@@ -5,21 +5,28 @@ This guide walks you through installing `spikedetect` and running your first spi
 ## Prerequisites
 
 - **Python 3.9 or later** (check with `python --version`)
-- **pip** package manager
+- **pip** package manager (check with `pip --version`)
 - A recording file (`.mat` or `.abf`)
 
-If you don't have Python yet, install [Anaconda](https://www.anaconda.com/download) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) -- both include Python, pip, and scientific libraries.
+If you don't have Python yet, install [Anaconda](https://www.anaconda.com/download) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) -- both include Python, pip, numpy, scipy, and matplotlib pre-installed.
 
 ## Step 1: Install
 
 ```bash
 # Clone the repository
 git clone https://github.com/tony-azevedo/spikeDetection.git
+
+# IMPORTANT: cd into the spikedetect/ subdirectory (where pyproject.toml lives)
 cd spikeDetection/spikedetect
 
 # Install the package (editable mode so you can modify if needed)
 pip install -e .
 ```
+
+This automatically installs the three required dependencies:
+- **numpy** (>= 1.24) -- array math
+- **scipy** (>= 1.10) -- signal filtering, peak finding, .mat file loading
+- **matplotlib** (>= 3.7) -- plotting and interactive GUIs
 
 To verify the install worked:
 
@@ -30,15 +37,37 @@ python -c "import spikedetect; print(spikedetect.__version__)"
 
 ### Optional extras
 
+Install these based on what you need:
+
 ```bash
-# Faster DTW computation (numba JIT acceleration)
-pip install -e ".[fast]"
-
-# ABF and HDF5 file support
+# If you have .abf files or MATLAB v7.3 HDF5 .mat files:
 pip install -e ".[io]"
+# Installs: pyabf (ABF file reader) + h5py (HDF5/MATLAB v7.3 reader)
 
-# Everything (fast + io + dev tools)
+# If you want faster DTW on large datasets:
+pip install -e ".[fast]"
+# Installs: numba (JIT compiler) + dtaidistance
+# NOTE: If numba causes warnings, it's safe to skip -- pure numpy works fine
+
+# If you want to run the test suite:
+pip install -e ".[dev]"
+# Installs: pytest + pytest-cov + ruff
+
+# All of the above at once:
 pip install -e ".[all]"
+```
+
+### Other packages you might want
+
+These are NOT required but useful in specific situations:
+
+```bash
+# To export spike times as a pandas DataFrame (result.to_dataframe()):
+pip install pandas
+
+# To use interactive GUIs in Jupyter notebooks:
+pip install ipympl
+# Then add %matplotlib widget at the top of your notebook
 ```
 
 ## Step 2: Load a recording
@@ -236,28 +265,93 @@ logging.basicConfig(level=logging.INFO)
 
 ## Troubleshooting
 
-### "No spike template provided"
+### Installation problems
+
+**"ModuleNotFoundError: No module named 'spikedetect'"**
+Make sure you installed from the `spikedetect/` subdirectory (not the repo root):
+```bash
+cd spikeDetection/spikedetect   # <-- this directory has pyproject.toml
+pip install -e .
+```
+
+**"ModuleNotFoundError: No module named 'h5py'"**
+You're trying to load a MATLAB v7.3 HDF5 .mat file. Install the I/O extras:
+```bash
+pip install h5py>=3.8
+# or install all I/O extras:
+pip install -e ".[io]"
+```
+
+**"ModuleNotFoundError: No module named 'pyabf'"**
+You're trying to load an ABF file. Install pyabf:
+```bash
+pip install pyabf>=2.3
+# or install all I/O extras:
+pip install -e ".[io]"
+```
+
+**"ImportError: pandas is required for to_dataframe()"**
+Install pandas:
+```bash
+pip install pandas
+```
+
+**numba/numpy version warning** (`_ARRAY_API not found` or `compiled using NumPy 1.x`)
+This is harmless -- the pipeline falls back to pure numpy automatically. To silence it:
+```bash
+# Option 1: Remove numba (simplest, no speed loss for most datasets)
+pip uninstall numba
+
+# Option 2: Make versions compatible
+pip install "numpy<2"
+
+# Option 3: Upgrade numba to support numpy 2
+pip install numba --upgrade
+```
+
+**Jupyter GUIs are not interactive / widgets don't respond**
+Install ipympl and use the widget backend:
+```bash
+pip install ipympl
+```
+Then add this at the **top** of your notebook (before any imports):
+```python
+%matplotlib widget
+```
+
+### Detection problems
+
+**"No spike template provided"**
 You need to set `params.spike_template` before calling `detect_spikes()`. Use the interactive `TemplateSelectionGUI` or provide a 1-D numpy array from a previous run.
 
-### "High-pass cutoff must be below the Nyquist frequency"
+**"High-pass cutoff must be below the Nyquist frequency"**
 Your filter cutoff is too high for your sample rate. The cutoff must be less than `sample_rate / 2`. Use `SpikeDetectionParams.default(fs=your_rate)` to get auto-scaled defaults.
 
-### Very few or zero spikes detected
+**"Expected a Recording object, got ndarray"**
+You passed a raw numpy array instead of a Recording object. Wrap it:
+```python
+rec = sd.Recording(name="my_data", voltage=my_array, sample_rate=50000)
+```
+
+**"Expected SpikeDetectionParams, got dict"**
+You passed a dict instead of a SpikeDetectionParams object. Create one:
+```python
+params = sd.SpikeDetectionParams(fs=50000)
+# or from a dict:
+params = sd.SpikeDetectionParams.from_dict(my_dict)
+```
+
+**Very few or zero spikes detected**
 - Try lowering `params.peak_threshold` to find more candidates
 - Try increasing `params.distance_threshold` to accept more candidates
 - Try lowering `params.amplitude_threshold`
 - Try `params.polarity = -1` if your spikes go downward
 - Use the `FilterGUI` to visually check that filtering reveals spikes
 
-### Too many false positives
+**Too many false positives**
 - Lower `params.distance_threshold` (stricter template match)
 - Raise `params.amplitude_threshold`
 - Use `SpotCheckGUI` to manually review and reject bad detections
-
-### numba/numpy version warning
-If you see `_ARRAY_API not found` warnings, your numba and numpy versions are incompatible. This is harmless -- the pipeline falls back to pure numpy. To silence it, either:
-- Uninstall numba: `pip uninstall numba`
-- Or upgrade numba: `pip install numba --upgrade`
 
 ## Next steps
 
