@@ -199,11 +199,14 @@ python -m pytest tests/test_pipeline.py::TestDetectSpikes::test_detects_embedded
 python -m pytest tests/ --cov=spikedetect --cov-report=term-missing
 ```
 
-## Migrating from MATLAB
+## Documentation
 
-See [MIGRATION_GUIDE.md](spikedetect/MIGRATION_GUIDE.md) for a complete mapping of MATLAB functions, data structures, and parameter names to their Python equivalents.
+- **[Getting Started](docs/GETTING_STARTED.md)** — Install and detect your first spikes in 5 minutes
+- **[User Guide](docs/USER_GUIDE.md)** — Complete reference for parameters, pipeline stages, GUIs, I/O, and batch processing
+- **[Changelog](docs/CHANGELOG.md)** — Quality-of-life improvements, bug fixes, and what's new vs MATLAB
+- **[Migration Guide](spikedetect/MIGRATION_GUIDE.md)** — MATLAB-to-Python function mapping
 
-Key differences:
+Key differences from MATLAB:
 - **No global state** — parameters are passed explicitly, not via `global vars`
 - **0-based indexing** — all spike times are 0-based sample indices
 - **Causal filtering** — uses `lfilter` (not `filtfilt`) to match MATLAB `filter()`
