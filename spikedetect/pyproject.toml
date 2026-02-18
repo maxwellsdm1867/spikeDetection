@@ -6,12 +6,30 @@ build-backend = "setuptools.build_meta"
 name = "spikedetect"
 version = "0.1.0"
 description = "Spike detection and sorting for electrophysiology recordings using DTW template matching"
-readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
 authors = [
     {name = "Arthur Hong"},
 ]
+keywords = ["spike-detection", "electrophysiology", "dtw", "template-matching", "neuroscience"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+[project.urls]
+Homepage = "https://github.com/tony-azevedo/spikeDetection"
+Repository = "https://github.com/tony-azevedo/spikeDetection"
+"Bug Tracker" = "https://github.com/tony-azevedo/spikeDetection/issues"
+Documentation = "https://github.com/tony-azevedo/spikeDetection/tree/master/docs"
 
 dependencies = [
     "numpy>=1.24",
@@ -46,7 +64,7 @@ addopts = "-v --tb=short"
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]

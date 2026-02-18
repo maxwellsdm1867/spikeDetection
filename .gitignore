@@ -1,34 +1,64 @@
-# Windows thumbnail cache files
-Thumbs.db
-ehthumbs.db
-ehthumbs_vista.db
-
-# Folder config file
-Desktop.ini
-
-# Recycle Bin used on file shares
-$RECYCLE.BIN/
-
-# Windows Installer files
-*.cab
-*.msi
-*.msm
-*.msp
-
-# Windows shortcuts
-*.lnk
-
 # =========================
-# Operating System Files
-# =========================
-
 # Python
+# =========================
 __pycache__/
 *.pyc
 *.pyo
 *.egg-info/
 dist/
 build/
-.pytest_cache/
 *.egg
+.pytest_cache/
 .ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# =========================
+# Virtual environments
+# =========================
+venv/
+.venv/
+env/
+.env/
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Data files (large binaries)
+# =========================
+*.mat
+*.npy
+*.h5
+*.pkl
+
+# =========================
+# Windows installer
+# =========================
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
