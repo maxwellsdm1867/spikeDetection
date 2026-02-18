@@ -5,8 +5,12 @@ Ports the MATLAB function ``filterDataWithSpikes.m``.
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 from scipy.signal import butter, lfilter
+
+logger = logging.getLogger(__name__)
 
 
 class SignalFilter:
@@ -57,6 +61,8 @@ class SignalFilter:
         Original MATLAB function: ``filterDataWithSpikes.m``
         """
         data = np.asarray(unfiltered_data, dtype=np.float64).ravel()
+        if len(data) == 0:
+            return data
 
         wn_hp = hp_cutoff / (fs / 2.0)
         b_hp, a_hp = butter(3, wn_hp, btype="high")
@@ -80,7 +86,11 @@ class SignalFilter:
             diff_filt[2:] = np.diff(filtered, n=2)
             diff_filt[:100] = 0.0
         else:
-            raise ValueError(f"diff_order must be 0, 1, or 2, got {diff_order}")
+            raise ValueError(
+                f"diff_order must be 0, 1, or 2, got {diff_order}. "
+                "Use 0 for no differentiation, 1 for first derivative "
+                "(recommended), or 2 for second derivative."
+            )
 
         return (polarity * diff_filt).astype(np.float64)
 

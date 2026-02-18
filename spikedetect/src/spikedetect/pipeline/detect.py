@@ -7,6 +7,8 @@ correct spike times via inflection point.
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 
 from spikedetect.models import Recording, SpikeDetectionParams, SpikeDetectionResult
@@ -14,6 +16,8 @@ from spikedetect.pipeline.filtering import SignalFilter
 from spikedetect.pipeline.inflection import InflectionPointDetector
 from spikedetect.pipeline.peaks import PeakFinder
 from spikedetect.pipeline.template import TemplateMatcher
+
+logger = logging.getLogger(__name__)
 
 
 class SpikeDetector:
@@ -67,16 +71,37 @@ class SpikeDetector:
         into the original ``recording.voltage`` array, matching the MATLAB
         convention ``trial.spikes = spikes_detected + start_point``.
         """
+        if not isinstance(recording, Recording):
+            raise TypeError(
+                f"Expected a Recording object, got {type(recording).__name__}. "
+                "Load your data first with load_recording('file.mat') or create "
+                "a Recording(name='...', voltage=array, sample_rate=10000)."
+            )
+        if not isinstance(params, SpikeDetectionParams):
+            raise TypeError(
+                f"Expected SpikeDetectionParams, got {type(params).__name__}. "
+                "Create params with SpikeDetectionParams(fs=10000) or "
+                "SpikeDetectionParams.default(fs=10000)."
+            )
+
+        import copy
+        params = copy.copy(params)
         params = params.validate()
 
         if params.spike_template is None:
             raise ValueError(
-                "spike_template must be set before running detection. "
-                "Use the interactive GUI or provide a template array."
+                "No spike template provided. Use the interactive GUI "
+                "(FilterGUI / TemplateSelectionGUI) to select one, or pass "
+                "a 1-D numpy array as params.spike_template."
             )
 
         voltage = recording.voltage.copy()
         fs = params.fs
+        duration_sec = len(voltage) / fs
+        logger.info(
+            "Starting spike detection on '%s' (%.1f s, %.0f Hz)",
+            recording.name, duration_sec, fs,
+        )
 
         # Trim start (MATLAB: start_point = round(.01*fs))
         start_point = round(start_offset * fs)
@@ -84,6 +109,10 @@ class SpikeDetector:
         unfiltered_data = voltage[start_point:stop_point]
 
         # Step 1: Filter
+        logger.info(
+            "Filtering: hp=%.0f Hz, lp=%.0f Hz, diff_order=%d, polarity=%+d",
+            params.hp_cutoff, params.lp_cutoff, params.diff_order, params.polarity,
+        )
         filtered_data = SignalFilter.filter_data(
             unfiltered_data,
             fs=fs,
@@ -94,18 +123,22 @@ class SpikeDetector:
         )
 
         # Step 2: Find peaks
-        # Guard against absurd peak_threshold
-        if params.peak_threshold > 1e4 * np.std(filtered_data):
-            params.peak_threshold = 3 * np.std(filtered_data)
+        # Guard against absurd peak_threshold (use local var, don't mutate params)
+        peak_thresh = params.peak_threshold
+        if peak_thresh > 1e4 * np.std(filtered_data):
+            peak_thresh = 3 * np.std(filtered_data)
 
         spike_locs = PeakFinder.find_spike_locations(
             filtered_data,
-            peak_threshold=params.peak_threshold,
+            peak_threshold=peak_thresh,
             fs=fs,
             spike_template_width=params.spike_template_width,
         )
 
+        logger.info("Found %d candidate peaks", len(spike_locs))
+
         if len(spike_locs) == 0:
+            logger.info("No candidate peaks found -- returning empty result")
             return SpikeDetectionResult(
                 spike_times=np.array([], dtype=np.int64),
                 spike_times_uncorrected=np.array([], dtype=np.int64),
@@ -118,6 +151,7 @@ class SpikeDetector:
         )
 
         # Step 3: Template matching (DTW distance + amplitude)
+        logger.info("Computing DTW template match for %d candidates...", len(spike_locs))
         match_result = TemplateMatcher.match(
             spike_locs,
             params.spike_template,
@@ -128,6 +162,7 @@ class SpikeDetector:
         )
 
         if len(match_result.dtw_distances) == 0:
+            logger.info("No valid candidates after template matching")
             return SpikeDetectionResult(
                 spike_times=np.array([], dtype=np.int64),
                 spike_times_uncorrected=np.array([], dtype=np.int64),
@@ -135,12 +170,21 @@ class SpikeDetector:
             )
 
         # Step 4: Threshold — keep spikes with DTW < threshold AND amplitude > threshold
+        # Use match_result.spike_locs (not original spike_locs) since NaN
+        # candidates may have been filtered out during template matching.
         suspect = (match_result.dtw_distances < params.distance_threshold) & (
             match_result.amplitudes > params.amplitude_threshold
         )
-        accepted_locs = spike_locs[suspect]
+        accepted_locs = match_result.spike_locs[suspect]
+
+        logger.info(
+            "Accepted %d / %d candidates (distance < %.1f, amplitude > %.3f)",
+            len(accepted_locs), len(match_result.spike_locs),
+            params.distance_threshold, params.amplitude_threshold,
+        )
 
         if len(accepted_locs) == 0:
+            logger.info("No spikes passed thresholds -- returning empty result")
             return SpikeDetectionResult(
                 spike_times=np.array([], dtype=np.int64),
                 spike_times_uncorrected=np.array([], dtype=np.int64),
@@ -167,6 +211,11 @@ class SpikeDetector:
         # Offset back to original recording indices
         corrected_global = corrected + start_point
         uncorrected_global = uncorrected + start_point
+
+        logger.info(
+            "Detection complete: %d spikes found in '%s'",
+            len(corrected_global), recording.name,
+        )
 
         return SpikeDetectionResult(
             spike_times=corrected_global.astype(np.int64),

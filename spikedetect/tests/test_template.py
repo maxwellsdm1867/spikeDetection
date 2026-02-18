@@ -31,6 +31,7 @@ class TestMatchTemplate:
         )
 
         assert isinstance(result, TemplateMatchResult)
+        assert len(result.spike_locs) == 3
         assert len(result.dtw_distances) == 3
         assert len(result.amplitudes) == 3
         assert result.filtered_candidates.shape[1] == 3

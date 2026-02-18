@@ -90,7 +90,7 @@ class TestDetectSpikes:
 
         recording = Recording(name="test", voltage=np.zeros(10000), sample_rate=10000)
         params = SpikeDetectionParams(fs=10000)
-        with pytest.raises(ValueError, match="spike_template must be set"):
+        with pytest.raises(ValueError, match="No spike template provided"):
             detect_spikes(recording, params)
 
     def test_empty_result_for_silent_recording(self, default_params):

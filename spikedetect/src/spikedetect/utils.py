@@ -70,10 +70,15 @@ class WaveformProcessor:
         Direct port of MATLAB ``smoothAndDifferentiate.m``.
         """
         w = np.asarray(waveform, dtype=np.float64)
+        if len(w) < 4:
+            return np.zeros_like(w)
         w_ = np.diff(w - w[0])
         w_ = WaveformProcessor.smooth(w_ - w_[0], smooth_window)
         w_ = np.diff(w_ - w_[0])
-        w_[0:3] = np.mean(w_[0:20])
+        if len(w_) >= 20:
+            w_[0:3] = np.mean(w_[0:20])
+        elif len(w_) >= 3:
+            w_[0:3] = np.mean(w_[0:len(w_)])
         w_ = WaveformProcessor.smooth(w_ - w_[0], smooth_window)
         w_ = w_ - w_[0]
         return np.concatenate([[0.0, 0.0], w_])
@@ -103,9 +108,14 @@ class WaveformProcessor:
         Direct port of MATLAB ``Differentiate.m``.
         """
         w = np.asarray(waveform, dtype=np.float64)
+        if len(w) < 4:
+            return np.zeros_like(w)
         w_ = np.diff(w - w[0])
         w_ = np.diff(w_ - w_[0])
-        w_[0:3] = np.mean(w_[0:20])
+        if len(w_) >= 20:
+            w_[0:3] = np.mean(w_[0:20])
+        elif len(w_) >= 3:
+            w_[0:3] = np.mean(w_[0:len(w_)])
         w_ = WaveformProcessor.smooth(w_ - w_[0], max(smooth_window, 5))
         w_ = w_ - w_[0]
         return np.concatenate([[0.0, 0.0], w_])

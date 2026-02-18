@@ -7,12 +7,15 @@ amplitude using a projection method.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import numpy as np
 
 from spikedetect.pipeline.dtw import dtw_warping_distance
 from spikedetect.pipeline.inflection import likely_inflection_point
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -21,6 +24,10 @@ class TemplateMatchResult:
 
     Attributes
     ----------
+    spike_locs : np.ndarray, shape (n_candidates,)
+        Peak locations that were successfully matched (0-based indices).
+        May be shorter than the input spike_locs if edge candidates were
+        removed due to NaN/boundary issues.
     unfiltered_candidates : np.ndarray, shape (n_window, n_candidates)
         Unfiltered waveform windows around each candidate.
     filtered_candidates : np.ndarray, shape (n_window, n_candidates)
@@ -39,6 +46,7 @@ class TemplateMatchResult:
         Estimated inflection point index within the spike window.
     """
 
+    spike_locs: np.ndarray
     unfiltered_candidates: np.ndarray
     filtered_candidates: np.ndarray
     norm_filtered_candidates: np.ndarray
@@ -68,6 +76,7 @@ class TemplateMatcher:
         window = np.arange(-stw // 2, stw // 2 + 1)
         spike_window = window - stw // 2
         return TemplateMatchResult(
+            spike_locs=np.array([], dtype=np.int64),
             unfiltered_candidates=np.empty((0, 0)),
             filtered_candidates=np.empty((0, 0)),
             norm_filtered_candidates=np.empty((0, 0)),
@@ -139,19 +148,23 @@ class TemplateMatcher:
         f_candidates = np.full((n_window, n_candidates), np.nan, dtype=np.float64)
         norm_f_candidates = np.full((n_window, n_candidates), np.nan, dtype=np.float64)
 
+        skipped_boundary = 0
         for i, loc in enumerate(spike_locs):
             # Boundary check matching MATLAB (uses float stw/2):
             upper = min(loc + stw / 2, len(filtered_data))
             lower = max(loc - stw / 2, 0)
             if upper - lower < stw:
+                skipped_boundary += 1
                 continue
 
             # Verify window indices are valid
             f_indices = loc + window
             uf_indices = loc + spike_window
             if f_indices[0] < 0 or f_indices[-1] >= len(filtered_data):
+                skipped_boundary += 1
                 continue
             if uf_indices[0] < 0 or uf_indices[-1] >= len(unfiltered_data):
+                skipped_boundary += 1
                 continue
 
             # Extract filtered window (centered on peak)
@@ -173,13 +186,19 @@ class TemplateMatcher:
             dist, _, _ = dtw_warping_distance(norm_cur, norm_template)
             dtw_distances[i] = dist
 
+        if skipped_boundary > 0:
+            logger.debug(
+                "Skipped %d / %d candidates near recording edges",
+                skipped_boundary, n_candidates,
+            )
+
         # Compute inflection point and amplitude projection
         inflection_peak, _ = likely_inflection_point(
             uf_candidates, dtw_distances, stw, fs
         )
 
         # Amplitude projection matching MATLAB
-        idx_f = round(stw / 24)
+        idx_f = max(1, round(stw / 24))
 
         # Get the average spike waveform for amplitude calculation
         good_mask = dtw_distances < np.quantile(dtw_distances[dtw_distances > 0], 0.25) if np.sum(dtw_distances > 0) > 0 else np.ones(n_candidates, dtype=bool)
@@ -211,7 +230,9 @@ class TemplateMatcher:
 
         # Remove candidates that couldn't be fully extracted (NaN from edge proximity)
         valid_mask = ~np.any(np.isnan(uf_candidates), axis=0)
+        filtered_spike_locs = spike_locs.copy()
         if not np.all(valid_mask):
+            filtered_spike_locs = spike_locs[valid_mask]
             uf_candidates = uf_candidates[:, valid_mask]
             f_candidates = f_candidates[:, valid_mask]
             norm_f_candidates = norm_f_candidates[:, valid_mask]
@@ -219,6 +240,7 @@ class TemplateMatcher:
             amplitudes = amplitudes[valid_mask]
 
         return TemplateMatchResult(
+            spike_locs=filtered_spike_locs,
             unfiltered_candidates=uf_candidates,
             filtered_candidates=f_candidates,
             norm_filtered_candidates=norm_f_candidates,

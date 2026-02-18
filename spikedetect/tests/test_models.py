@@ -44,17 +44,17 @@ class TestSpikeDetectionParams:
 
     def test_validate_negative_fs(self):
         params = SpikeDetectionParams(fs=-1)
-        with pytest.raises(ValueError, match="Sample rate must be positive"):
+        with pytest.raises(ValueError, match="Sample rate.*must be positive"):
             params.validate()
 
     def test_validate_hp_above_nyquist(self):
         params = SpikeDetectionParams(fs=10000, hp_cutoff=6000)
-        with pytest.raises(ValueError, match="HP cutoff.*must be below Nyquist"):
+        with pytest.raises(ValueError, match="High-pass cutoff.*must be below"):
             params.validate()
 
     def test_validate_lp_above_nyquist(self):
         params = SpikeDetectionParams(fs=10000, lp_cutoff=6000)
-        with pytest.raises(ValueError, match="LP cutoff.*must be below Nyquist"):
+        with pytest.raises(ValueError, match="Low-pass cutoff.*must be below"):
             params.validate()
 
     def test_validate_bad_diff_order(self):

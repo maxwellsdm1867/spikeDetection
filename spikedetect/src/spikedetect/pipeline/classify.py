@@ -95,7 +95,7 @@ class SpikeClassifier:
             )
 
         bad = ((x > xt) | (y < yt)) & ~weirdbad
-        if len(bad) >= 40:
+        if np.sum(bad) >= 40:
             bad = (x > xt) & (y < yt)
 
         return good, weird, weirdbad, bad

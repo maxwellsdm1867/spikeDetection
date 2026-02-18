@@ -18,7 +18,7 @@ try:
     from numba import njit as _njit
 
     _HAS_NUMBA = True
-except (ImportError, AttributeError):  # pragma: no cover
+except Exception:  # pragma: no cover  # numba may fail with numpy version mismatch
     _HAS_NUMBA = False
 
     def _njit(func=None, **kwargs):  # type: ignore[misc]

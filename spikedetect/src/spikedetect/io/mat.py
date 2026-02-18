@@ -293,7 +293,15 @@ def load_recording(path: str | Path) -> Recording:
     """
     path = Path(path)
     if not path.exists():
-        raise FileNotFoundError(f"MAT file not found: {path}")
+        raise FileNotFoundError(
+            f"MAT file not found: {path}\n"
+            "Check that the file path is correct and the file exists."
+        )
+    if path.suffix.lower() not in (".mat",):
+        raise ValueError(
+            f"Expected a .mat file, got '{path.suffix}'. "
+            "For ABF files, use load_abf() instead."
+        )
 
     # Try scipy first (v5/v7), fall back to h5py (v7.3 / HDF5)
     try:

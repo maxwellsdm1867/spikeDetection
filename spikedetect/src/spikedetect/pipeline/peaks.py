@@ -5,8 +5,12 @@ Ports the MATLAB function ``findSpikeLocations.m``.
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 from scipy.signal import find_peaks
+
+logger = logging.getLogger(__name__)
 
 
 class PeakFinder:
@@ -62,7 +66,14 @@ class PeakFinder:
         mask = (peak_indices >= spike_template_width) & (
             peak_indices < n - spike_template_width
         )
-        return peak_indices[mask].astype(np.int64)
+        result = peak_indices[mask].astype(np.int64)
+        excluded = len(peak_indices) - len(result)
+        if excluded > 0:
+            logger.debug(
+                "Excluded %d peaks near recording edges (%d kept)",
+                excluded, len(result),
+            )
+        return result
 
 
 # Backwards-compatible alias

@@ -6,10 +6,13 @@ Converted from MATLAB structs: ``vars`` -> SpikeDetectionParams,
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -52,11 +55,31 @@ class SpikeDetectionParams:
             self.spike_template_width = round(0.005 * self.fs) + 1
         if self.spike_template is not None:
             self.spike_template = np.asarray(self.spike_template, dtype=np.float64)
+            if self.spike_template.ndim != 1:
+                raise ValueError(
+                    f"spike_template must be a 1-D array, got shape "
+                    f"{self.spike_template.shape}. Flatten it with "
+                    f"template.ravel() before passing."
+                )
 
     @classmethod
     def default(cls, fs: float = 10000) -> SpikeDetectionParams:
-        """Create params with sensible defaults for a given sample rate."""
-        return cls(fs=fs)
+        """Create params with sensible defaults for a given sample rate.
+
+        The high-pass and low-pass cutoffs are automatically scaled to
+        stay below the Nyquist frequency when using low sample rates.
+
+        Parameters
+        ----------
+        fs : float
+            Sample rate in Hz (default 10000).
+        """
+        nyquist = fs / 2.0
+        hp = min(200.0, nyquist * 0.08)
+        lp = min(800.0, nyquist * 0.32)
+        if lp <= hp:
+            lp = hp * 2
+        return cls(fs=fs, hp_cutoff=hp, lp_cutoff=lp)
 
     def validate(self) -> SpikeDetectionParams:
         """Validate and clean parameters (replaces cleanUpSpikeVarsStruct).
@@ -64,23 +87,43 @@ class SpikeDetectionParams:
         Returns self for chaining.
         """
         if self.fs <= 0:
-            raise ValueError(f"Sample rate must be positive, got {self.fs}")
+            raise ValueError(
+                f"Sample rate (fs) must be positive, got {self.fs}. "
+                "Check that the recording was loaded correctly."
+            )
         if self.hp_cutoff <= 0:
-            raise ValueError(f"HP cutoff must be positive, got {self.hp_cutoff}")
+            raise ValueError(
+                f"High-pass cutoff must be positive, got {self.hp_cutoff} Hz. "
+                "Typical values are 100-500 Hz for spike detection."
+            )
         if self.lp_cutoff <= 0:
-            raise ValueError(f"LP cutoff must be positive, got {self.lp_cutoff}")
+            raise ValueError(
+                f"Low-pass cutoff must be positive, got {self.lp_cutoff} Hz. "
+                "Typical values are 500-3000 Hz for spike detection."
+            )
         if self.hp_cutoff >= self.fs / 2:
             raise ValueError(
-                f"HP cutoff ({self.hp_cutoff}) must be below Nyquist ({self.fs / 2})"
+                f"High-pass cutoff ({self.hp_cutoff} Hz) must be below the "
+                f"Nyquist frequency ({self.fs / 2} Hz). Try lowering hp_cutoff "
+                f"or using a higher sample rate."
             )
         if self.lp_cutoff >= self.fs / 2:
             raise ValueError(
-                f"LP cutoff ({self.lp_cutoff}) must be below Nyquist ({self.fs / 2})"
+                f"Low-pass cutoff ({self.lp_cutoff} Hz) must be below the "
+                f"Nyquist frequency ({self.fs / 2} Hz). Try lowering lp_cutoff "
+                f"or using a higher sample rate."
             )
         if self.diff_order not in (0, 1, 2):
-            raise ValueError(f"diff_order must be 0, 1, or 2, got {self.diff_order}")
+            raise ValueError(
+                f"diff_order must be 0, 1, or 2, got {self.diff_order}. "
+                "Use 0 for no differentiation, 1 for first derivative (recommended), "
+                "or 2 for second derivative."
+            )
         if self.polarity not in (-1, 1):
-            raise ValueError(f"polarity must be -1 or 1, got {self.polarity}")
+            raise ValueError(
+                f"polarity must be -1 or 1, got {self.polarity}. "
+                "Use 1 for upward spikes, -1 for downward spikes."
+            )
         if self.spike_template is not None:
             self.spike_template_width = len(self.spike_template)
         return self
@@ -149,6 +192,58 @@ class Recording:
         self.voltage = np.asarray(self.voltage, dtype=np.float64).ravel()
         if self.current is not None:
             self.current = np.asarray(self.current, dtype=np.float64).ravel()
+        if len(self.voltage) == 0:
+            raise ValueError(
+                "Voltage array is empty. Check that the recording file "
+                "loaded correctly."
+            )
+        if self.sample_rate <= 0:
+            raise ValueError(
+                f"Sample rate must be positive, got {self.sample_rate}. "
+                "Check that the recording file has a valid sample rate."
+            )
+
+    @property
+    def duration(self) -> float:
+        """Recording duration in seconds."""
+        return len(self.voltage) / self.sample_rate
+
+    @property
+    def n_samples(self) -> int:
+        """Number of voltage samples."""
+        return len(self.voltage)
+
+    def plot(self, show_spikes: bool = True) -> "matplotlib.figure.Figure":
+        """Plot the voltage trace with optional spike markers.
+
+        Parameters
+        ----------
+        show_spikes : bool
+            If True and a detection result exists, mark spike times on the trace.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            The figure object. Call ``plt.show()`` to display interactively.
+        """
+        import matplotlib.pyplot as plt
+
+        time = np.arange(len(self.voltage)) / self.sample_rate
+        fig, ax = plt.subplots(figsize=(12, 4))
+        ax.plot(time, self.voltage, linewidth=0.5, color="0.3")
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Voltage")
+        ax.set_title(self.name)
+
+        if show_spikes and self.result is not None and self.result.n_spikes > 0:
+            spike_times_sec = self.result.spike_times / self.sample_rate
+            spike_voltages = self.voltage[self.result.spike_times]
+            ax.plot(spike_times_sec, spike_voltages, "r|", markersize=10,
+                    label=f"{self.result.n_spikes} spikes")
+            ax.legend()
+
+        fig.tight_layout()
+        return fig
 
 
 @dataclass
@@ -179,3 +274,49 @@ class SpikeDetectionResult:
     def spike_times_seconds(self) -> np.ndarray:
         """Spike times in seconds."""
         return self.spike_times.astype(np.float64) / self.params.fs
+
+    def summary(self) -> str:
+        """Return a human-readable summary of the detection results."""
+        lines = [
+            f"Spike Detection Result",
+            f"  Spikes found: {self.n_spikes}",
+        ]
+        if self.n_spikes > 0:
+            times = self.spike_times_seconds
+            lines.append(f"  Time range: {times[0]:.3f} - {times[-1]:.3f} s")
+            if self.n_spikes >= 2:
+                isis = np.diff(times)
+                lines.append(
+                    f"  Mean ISI: {np.mean(isis)*1000:.1f} ms "
+                    f"(range {np.min(isis)*1000:.1f} - {np.max(isis)*1000:.1f} ms)"
+                )
+                lines.append(f"  Mean firing rate: {1.0 / np.mean(isis):.1f} Hz")
+        lines.append(f"  Spot-checked: {'yes' if self.spot_checked else 'no'}")
+        return "\n".join(lines)
+
+    def to_dataframe(self) -> "pandas.DataFrame":
+        """Convert spike times to a pandas DataFrame.
+
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame with columns: spike_index, spike_time_s,
+            spike_index_uncorrected.
+
+        Raises
+        ------
+        ImportError
+            If pandas is not installed.
+        """
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "pandas is required for to_dataframe(). "
+                "Install it with: pip install pandas"
+            )
+        return pd.DataFrame({
+            "spike_index": self.spike_times,
+            "spike_time_s": self.spike_times_seconds,
+            "spike_index_uncorrected": self.spike_times_uncorrected,
+        })
