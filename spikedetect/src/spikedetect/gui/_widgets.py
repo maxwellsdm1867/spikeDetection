@@ -1,0 +1,97 @@
+"""Shared helper functions for Matplotlib-based GUI components."""
+
+from __future__ import annotations
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+
+
+def raster_ticks(
+    ax: plt.Axes,
+    locations: np.ndarray,
+    y_pos: float,
+    tick_height: float | None = None,
+    **kwargs,
+) -> list:
+    """Draw raster tick marks at given locations on an axis.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes to draw on.
+    locations : np.ndarray
+        1-D array of x-positions for tick marks.
+    y_pos : float
+        The y-coordinate for the base of the tick marks.
+    tick_height : float or None, optional
+        Height of each tick mark. If None, defaults to 2% of the current
+        y-axis range.
+    **kwargs
+        Additional keyword arguments passed to ``ax.vlines``.
+
+    Returns
+    -------
+    list
+        List of LineCollection objects created.
+    """
+    locations = np.asarray(locations).ravel()
+    if len(locations) == 0:
+        return []
+
+    if tick_height is None:
+        ylim = ax.get_ylim()
+        tick_height = 0.02 * abs(ylim[1] - ylim[0])
+        if tick_height == 0:
+            tick_height = 0.1
+
+    defaults = {"colors": "k", "linewidths": 0.5}
+    defaults.update(kwargs)
+
+    lines = ax.vlines(locations, y_pos, y_pos + tick_height, **defaults)
+    return [lines]
+
+
+def blocking_wait(fig: Figure) -> str | None:
+    """Block until user presses a key or closes the figure.
+
+    Works in both interactive (Qt/Tk) and notebook (ipympl) modes.
+
+    Parameters
+    ----------
+    fig : matplotlib.figure.Figure
+        The figure to wait on.
+
+    Returns
+    -------
+    str or None
+        The key pressed, or None if the figure was closed.
+    """
+    result = {"key": None}
+
+    def _on_key(event):
+        result["key"] = event.key
+        fig.canvas.stop_event_loop()
+
+    def _on_close(event):
+        result["key"] = None
+        fig.canvas.stop_event_loop()
+
+    cid_key = fig.canvas.mpl_connect("key_press_event", _on_key)
+    cid_close = fig.canvas.mpl_connect("close_event", _on_close)
+
+    try:
+        fig.canvas.start_event_loop(timeout=0)
+    except Exception:
+        # Fallback: use plt.waitforbuttonpress
+        try:
+            pressed = plt.waitforbuttonpress()
+            if pressed:
+                result["key"] = "enter"
+        except Exception:
+            pass
+    finally:
+        fig.canvas.mpl_disconnect(cid_key)
+        fig.canvas.mpl_disconnect(cid_close)
+
+    return result["key"]
