@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Python package (`spikedetect`) for detecting and sorting neural/EMG spikes from electrophysiology recordings. Ported from a MATLAB codebase using DTW template-matching with amplitude thresholds to classify candidate spikes, with interactive Matplotlib GUIs for parameter tuning and manual spot-checking.
 
-The original MATLAB code is preserved in `legacy/` for reference.
+The original MATLAB code is at [tony-azevedo/spikeDetection](https://github.com/tony-azevedo/spikeDetection) for reference.
 
 ## Installation and Dependencies
 
@@ -177,5 +177,4 @@ filtered = filter_data(voltage, fs=10000, hp_cutoff=200, lp_cutoff=800)
 ## Directory Layout
 
 - `spikedetect/` — Python package (installable via pip)
-- `legacy/` — Original MATLAB source code (functions/, scripts/, utils/, matlab_src/)
 - `LICENSE` — Project license

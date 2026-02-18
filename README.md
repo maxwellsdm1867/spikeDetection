@@ -178,7 +178,6 @@ spikeDetection/
 │   │   ├── pipeline/         # Detection pipeline modules
 │   │   └── gui/              # Interactive Matplotlib GUIs
 │   └── tests/                # 79 pytest tests
-└── legacy/                   # Original MATLAB source code
 ```
 
 ## Testing
