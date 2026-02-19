@@ -16,9 +16,16 @@ from matplotlib.gridspec import GridSpec
 from spikedetect.gui._widgets import raster_ticks, blocking_wait
 from spikedetect.models import Recording, SpikeDetectionParams, SpikeDetectionResult
 from spikedetect.pipeline.filtering import filter_data
-from spikedetect.pipeline.peaks import find_spike_locations
-from spikedetect.pipeline.template import match_template
+from spikedetect.pipeline.peaks import PeakFinder
+from spikedetect.pipeline.template import TemplateMatcher, TemplateMatchResult
 from spikedetect.utils import smooth, smooth_and_differentiate
+
+
+# Colors matching MATLAB spikeSpotCheck.m
+_COLOR_ACCEPTED = (0.0, 0.45, 0.74)       # blue
+_COLOR_REJECTED = (0.929, 0.694, 0.125)    # yellow/orange
+_COLOR_THRESHOLD = (1.0, 0.0, 0.0)        # red
+_COLOR_CURRENT = (1.0, 0.0, 0.0)          # red
 
 
 class SpotCheckGUI:
@@ -46,6 +53,16 @@ class SpotCheckGUI:
         self._spike_idx = 0
         self._accepted: np.ndarray | None = None
         self._direction = 1
+
+        # Scatter plot data (populated in _setup)
+        self._dtw_distances: np.ndarray | None = None
+        self._amplitudes: np.ndarray | None = None
+        self._candidate_locs: np.ndarray | None = None
+        self._candidate_is_accepted: np.ndarray | None = None
+        self._spike_to_candidate: dict[int, int] = {}
+        self._current_dot = None
+        self._scat_in = None
+        self._scat_out = None
 
     def run(self) -> SpikeDetectionResult:
         """Display the GUI and block until the user finishes reviewing.
@@ -127,6 +144,63 @@ class SpotCheckGUI:
         if params.spike_template is not None and len(self._spikes) > 0:
             self._compute_mean_waveform()
 
+        # Run template matching to get DTW distances and amplitudes
+        self._run_template_matching()
+
+    def _run_template_matching(self) -> None:
+        """Run peak finding and template matching to populate scatter data."""
+        params = self.result.params
+
+        if params.spike_template is None or len(self._spikes) == 0:
+            self._dtw_distances = np.empty(0)
+            self._amplitudes = np.empty(0)
+            self._candidate_locs = np.array([], dtype=np.int64)
+            self._candidate_is_accepted = np.array([], dtype=bool)
+            self._spike_to_candidate = {}
+            return
+
+        # Find all candidate peaks (same as detection pipeline)
+        candidate_locs = PeakFinder.find_spike_locations(
+            self._filtered,
+            peak_threshold=params.peak_threshold,
+            fs=params.fs,
+            spike_template_width=params.spike_template_width,
+        )
+
+        if len(candidate_locs) == 0:
+            self._dtw_distances = np.empty(0)
+            self._amplitudes = np.empty(0)
+            self._candidate_locs = np.array([], dtype=np.int64)
+            self._candidate_is_accepted = np.array([], dtype=bool)
+            self._spike_to_candidate = {}
+            return
+
+        # Run template matching
+        match_result = TemplateMatcher.match(
+            candidate_locs,
+            params.spike_template,
+            self._filtered,
+            self._recording.voltage,
+            params.spike_template_width,
+            params.fs,
+        )
+
+        self._candidate_locs = match_result.spike_locs
+        self._dtw_distances = match_result.dtw_distances
+        self._amplitudes = match_result.amplitudes
+
+        # Build mapping: for each accepted spike, find the closest candidate
+        # (mirrors MATLAB spikes_map logic)
+        self._candidate_is_accepted = np.zeros(len(self._candidate_locs), dtype=bool)
+        self._spike_to_candidate = {}
+
+        for i, spike_pos in enumerate(self._spikes):
+            if len(self._candidate_locs) > 0:
+                diffs = np.abs(self._candidate_locs.astype(np.int64) - int(spike_pos))
+                best = int(np.argmin(diffs))
+                self._candidate_is_accepted[best] = True
+                self._spike_to_candidate[i] = best
+
     def _compute_mean_waveform(self) -> None:
         """Compute the mean spike waveform and its 2nd derivative."""
         params = self.result.params
@@ -204,6 +278,159 @@ class SpotCheckGUI:
             self._ax_current.set_xlim(t[0], t[-1])
         else:
             self._ax_current.set_visible(False)
+
+        # Populate the DTW scatter plot
+        self._build_scatter()
+
+    def _build_scatter(self) -> None:
+        """Populate the DTW distance vs amplitude scatter plot."""
+        ax = self._ax_hist
+
+        if self._dtw_distances is None or len(self._dtw_distances) == 0:
+            ax.set_title("No DTW data available")
+            return
+
+        params = self.result.params
+        dists = self._dtw_distances
+        amps = self._amplitudes
+        accepted_mask = self._candidate_is_accepted
+        rejected_mask = ~accepted_mask
+
+        # Plot rejected dots (yellow) first, then accepted (blue) on top
+        if np.any(rejected_mask):
+            self._scat_out = ax.plot(
+                dists[rejected_mask], amps[rejected_mask], ".",
+                color=_COLOR_REJECTED, markersize=10, picker=5,
+            )[0]
+        if np.any(accepted_mask):
+            self._scat_in = ax.plot(
+                dists[accepted_mask], amps[accepted_mask], ".",
+                color=_COLOR_ACCEPTED, markersize=10, picker=5,
+            )[0]
+
+        # Threshold lines (red)
+        amp_min = min(np.min(amps), 0) if len(amps) > 0 else 0
+        amp_max = np.max(amps) if len(amps) > 0 else 1
+        dist_max = np.max(dists) if len(dists) > 0 else 1
+
+        ax.plot(
+            [params.distance_threshold, params.distance_threshold],
+            [amp_min, amp_max],
+            color=_COLOR_THRESHOLD, linewidth=1,
+        )
+        ax.plot(
+            [0, dist_max],
+            [params.amplitude_threshold, params.amplitude_threshold],
+            color=_COLOR_THRESHOLD, linewidth=1,
+        )
+
+        # Current spike marker (red filled circle) - initially invisible
+        self._current_dot, = ax.plot(
+            [], [], "o", markerfacecolor=_COLOR_CURRENT,
+            markeredgecolor="none", markersize=7,
+        )
+
+        ax.set_xlim(0, dist_max * 1.05 if dist_max > 0 else 1)
+        ax.set_ylim(amp_min - 0.05 * abs(amp_max - amp_min),
+                     amp_max + 0.05 * abs(amp_max - amp_min))
+        ax.set_title("Click to select spikes, tab to move")
+
+        # Connect pick event for clicking on scatter dots
+        self.fig.canvas.mpl_connect("pick_event", self._on_scatter_pick)
+
+    def _on_scatter_pick(self, event) -> None:
+        """Handle clicking on a scatter dot to navigate to that spike."""
+        if event.mouseevent.inaxes != self._ax_hist:
+            return
+
+        artist = event.artist
+        ind = event.ind
+        if len(ind) == 0:
+            return
+        pick_idx = ind[0]
+
+        # Determine which candidate index was clicked
+        accepted_mask = self._candidate_is_accepted
+        rejected_mask = ~accepted_mask
+
+        if artist is self._scat_in and self._scat_in is not None:
+            # Clicked an accepted dot -- map back to candidate index
+            accepted_indices = np.where(accepted_mask)[0]
+            if pick_idx < len(accepted_indices):
+                cand_idx = accepted_indices[pick_idx]
+            else:
+                return
+        elif artist is self._scat_out and self._scat_out is not None:
+            # Clicked a rejected dot
+            rejected_indices = np.where(rejected_mask)[0]
+            if pick_idx < len(rejected_indices):
+                cand_idx = rejected_indices[pick_idx]
+            else:
+                return
+        else:
+            return
+
+        # Find the spike index that maps to this candidate, or the closest spike
+        target_loc = self._candidate_locs[cand_idx]
+        # Check if any spike maps to this candidate
+        for spike_i, cand_i in self._spike_to_candidate.items():
+            if cand_i == cand_idx:
+                self._spike_idx = spike_i
+                self._show_current_spike()
+                self.fig.canvas.draw_idle()
+                return
+
+        # If no spike maps directly, find the closest spike
+        if len(self._spikes) > 0:
+            diffs = np.abs(self._spikes.astype(np.int64) - int(target_loc))
+            self._spike_idx = int(np.argmin(diffs))
+            self._show_current_spike()
+            self.fig.canvas.draw_idle()
+
+    def _update_scatter_dot(self) -> None:
+        """Move the current dot marker to highlight the current spike."""
+        if self._current_dot is None or self._dtw_distances is None:
+            return
+        if len(self._dtw_distances) == 0:
+            return
+
+        cand_idx = self._spike_to_candidate.get(self._spike_idx)
+        if cand_idx is not None and cand_idx < len(self._dtw_distances):
+            self._current_dot.set_data(
+                [self._dtw_distances[cand_idx]],
+                [self._amplitudes[cand_idx]],
+            )
+        else:
+            self._current_dot.set_data([], [])
+
+    def _update_scatter_colors(self) -> None:
+        """Rebuild the scatter dot colors after accept/reject changes."""
+        if self._dtw_distances is None or len(self._dtw_distances) == 0:
+            return
+
+        # Rebuild candidate_is_accepted from current _accepted state
+        self._candidate_is_accepted[:] = False
+        for i, acc in enumerate(self._accepted):
+            if acc:
+                cand_idx = self._spike_to_candidate.get(i)
+                if cand_idx is not None:
+                    self._candidate_is_accepted[cand_idx] = True
+
+        accepted_mask = self._candidate_is_accepted
+        rejected_mask = ~accepted_mask
+        dists = self._dtw_distances
+        amps = self._amplitudes
+
+        if self._scat_in is not None:
+            if np.any(accepted_mask):
+                self._scat_in.set_data(dists[accepted_mask], amps[accepted_mask])
+            else:
+                self._scat_in.set_data([], [])
+        if self._scat_out is not None:
+            if np.any(rejected_mask):
+                self._scat_out.set_data(dists[rejected_mask], amps[rejected_mask])
+            else:
+                self._scat_out.set_data([], [])
 
     def _show_current_spike(self) -> None:
         """Update the bottom panels to show the current spike."""
@@ -305,10 +532,8 @@ class SpotCheckGUI:
         self._ax_squig.set_xlim(t_ctx[0], t_ctx[-1])
         self._ax_squig.set_title("Filtered context with template")
 
-        # Update DTW scatter -- highlight current spike
-        self._ax_hist.cla()
-        self._ax_hist.set_xlabel("DTW Distance")
-        self._ax_hist.set_title("Click spike on scatter (not implemented)")
+        # Update the current dot on the scatter plot
+        self._update_scatter_dot()
 
         self.fig.canvas.draw_idle()
 
@@ -316,9 +541,11 @@ class SpotCheckGUI:
         """Process a keypress and return 'done' to finish, or None."""
         if key == "y":
             self._accepted[self._spike_idx] = True
+            self._update_scatter_colors()
             self._advance()
         elif key == "n":
             self._accepted[self._spike_idx] = False
+            self._update_scatter_colors()
             self._advance()
         elif key == "right":
             self._spikes[self._spike_idx] += 10

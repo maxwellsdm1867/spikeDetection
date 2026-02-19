@@ -232,23 +232,90 @@ deriv = WaveformProcessor.differentiate(waveform)
 
 ## Interactive GUIs
 
-Four interactive tools for visual parameter tuning. All use Matplotlib and work in both standalone Python and Jupyter notebooks.
+Four interactive tools for visual parameter tuning. All use Matplotlib and work in both standalone Python and Jupyter notebooks. The GUIs chain together in a specific order -- each one produces output needed by the next.
+
+### GUI Workflow Overview
+
+```
+Raw voltage + default params
+        |
+        v
+  [FilterGUI]  -----> updated params (hp/lp cutoffs, diff order, polarity)
+        |
+        v
+  Filter the data (SignalFilter.filter_data)
+        |
+        v
+  [TemplateSelectionGUI] -----> spike_template (1-D waveform)
+        |
+        v
+  Run detect_spikes() -----> initial SpikeDetectionResult
+        |
+  Also run PeakFinder + TemplateMatcher manually to get match_result
+        |
+        v
+  [ThresholdGUI]  -----> updated distance_threshold, amplitude_threshold
+        |
+        v
+  Re-run detect_spikes() with updated thresholds
+        |
+        v
+  [SpotCheckGUI]  -----> final reviewed SpikeDetectionResult
+```
+
+For complete runnable examples, see:
+- `examples/gui_workflow.py` -- full workflow with synthetic data (no files needed)
+- `examples/gui_workflow_from_file.py` -- same workflow loading from a .mat or .abf file
 
 ### FilterGUI -- Tune filter parameters
 
 Sliders for HP cutoff, LP cutoff, peak threshold. Radio buttons for diff order. Button for polarity toggle. Shows the filtered signal updating in real time.
 
+**Controls:**
+- **HP slider** (0.5--1000 Hz): High-pass cutoff. Move right to remove more low-frequency drift.
+- **LP slider** (0.11--1000 Hz): Low-pass cutoff. Move left to remove high-frequency noise.
+- **Peak thresh slider** (log10 scale): Controls candidate detection sensitivity.
+- **Diff radio buttons** (0/1/2): Differentiation order. 1 is usually best.
+- **Pol button**: Click to flip signal polarity (+1 or -1).
+- **Enter**: Accept settings and close.
+
+**What to look for:** Red dots on peaks should align with your spikes. Adjust until most spikes have a dot and noise does not.
+
 ```python
 from spikedetect.gui import FilterGUI
 
 filter_gui = FilterGUI(voltage, params)
-params = filter_gui.run()  # blocks until you close the window
+params = filter_gui.run()  # blocks until you press Enter or close
 # params is updated with your chosen filter settings
+```
+
+**Next step:** Filter the data with the chosen parameters before using TemplateSelectionGUI:
+
+```python
+from spikedetect.pipeline.filtering import SignalFilter
+
+start_point = round(0.01 * params.fs)
+unfiltered_data = rec.voltage[start_point:]
+filtered_data = SignalFilter.filter_data(
+    unfiltered_data, fs=params.fs,
+    hp_cutoff=params.hp_cutoff, lp_cutoff=params.lp_cutoff,
+    diff_order=params.diff_order, polarity=params.polarity,
+)
 ```
 
 ### TemplateSelectionGUI -- Select a spike template
 
-Displays the filtered signal with detected peaks marked. Click on peaks to select seed spikes. The GUI averages your selections (with cross-correlation alignment) to build a template.
+Displays the filtered signal with detected peaks marked as red dots. Click on peaks to select seed spikes -- they turn green when selected. The bottom panel shows overlaid waveforms of your selections. When you press Enter, the GUI averages your selections (with cross-correlation alignment) to build the spike template.
+
+**Controls:**
+- **Click on red dot**: Select that spike as a seed (turns green).
+- **Shift+click**: Select additional spikes.
+- **Enter**: Build template from selections and close.
+
+**Tips:**
+- Select 3--5 clear, well-isolated spikes for the best template.
+- Avoid spikes that overlap with other spikes or artifacts.
+- The template should represent a "typical" spike, not the largest.
 
 ```python
 from spikedetect.gui import TemplateSelectionGUI
@@ -260,10 +327,35 @@ params.spike_template = template
 
 ### ThresholdGUI -- Adjust acceptance thresholds
 
-Scatter plot of DTW distance vs. amplitude for all candidates. Click to move the threshold lines. Color-coded waveform panels show what's accepted/rejected. Press `b` to toggle between adjusting distance and amplitude thresholds.
+Scatter plot of DTW distance vs. amplitude for all candidates. Click to move the threshold lines. Color-coded waveform panels show what's accepted (blue) vs. rejected (red/yellow). The bottom panel shows the mean accepted spike waveform.
+
+**Controls:**
+- **Click on scatter plot**: Move the active threshold line to the click position.
+- **b**: Toggle between adjusting distance threshold (vertical line) and amplitude threshold (horizontal line). The active threshold is cyan; the inactive one is red.
+- **Click on mean waveform panel**: Update the spike template to the mean of currently accepted waveforms.
+- **Enter**: Accept thresholds and close.
+
+**What to look for:** Good spikes cluster at low distance and high amplitude (lower-left). Noise clusters at high distance (upper-right). Position the threshold lines to separate these clusters.
+
+**Important:** ThresholdGUI requires a `TemplateMatcher` result, not just a detection result. You need to run the pipeline stages manually:
 
 ```python
+from spikedetect.pipeline.peaks import PeakFinder
+from spikedetect.pipeline.template import TemplateMatcher
 from spikedetect.gui import ThresholdGUI
+
+spike_locs = PeakFinder.find_spike_locations(
+    filtered_data, peak_threshold=params.peak_threshold,
+    fs=params.fs, spike_template_width=params.spike_template_width,
+)
+match_result = TemplateMatcher.match(
+    spike_locs=spike_locs,
+    spike_template=params.spike_template,
+    filtered_data=filtered_data,
+    unfiltered_data=unfiltered_data,
+    spike_template_width=params.spike_template_width,
+    fs=params.fs,
+)
 
 threshold_gui = ThresholdGUI(match_result, params)
 params = threshold_gui.run()
@@ -271,13 +363,18 @@ params = threshold_gui.run()
 
 ### SpotCheckGUI -- Review spikes one by one
 
-Step through each detected spike. Keyboard controls:
-- **y** / **Enter**: Accept this spike
-- **n**: Reject this spike
-- **Left/Right arrows**: Navigate between spikes
-- **Tab**: Jump to the next unreviewed spike
+Step through each detected spike with a detailed multi-panel view showing the unfiltered trace with spike markers, filtered trace, spike context window with mean waveform and 2nd derivative overlay, and filtered context with template overlay.
 
-Shows the unfiltered waveform, mean waveform overlay, 2nd derivative, and context window.
+**Keyboard controls:**
+- **y**: Accept this spike and advance to next
+- **n**: Reject this spike (remove from results) and advance
+- **Right arrow**: Shift spike position right by 10 samples
+- **Shift+Right**: Shift spike position right by 1 sample
+- **Left arrow**: Shift spike position left by 10 samples
+- **Shift+Left**: Shift spike position left by 1 sample
+- **Tab**: Skip to next spike without decision
+- **Shift+Tab**: Go back to previous spike
+- **Enter**: Finish review and close
 
 ```python
 from spikedetect.gui import SpotCheckGUI
@@ -285,7 +382,15 @@ from spikedetect.gui import SpotCheckGUI
 spotcheck = SpotCheckGUI(recording, result)
 result = spotcheck.run()
 # result.spot_checked is now True
+# result.spike_times reflects accepted/adjusted spikes
 ```
+
+### Common Pitfalls
+
+- **ThresholdGUI needs `match_result`, not `result`**: The ThresholdGUI scatter plot shows DTW distances and amplitudes from `TemplateMatcher.match()`. You cannot pass a `SpikeDetectionResult` directly. See the code example above.
+- **TemplateSelectionGUI needs filtered data**: Pass `filtered_data` (output of `SignalFilter.filter_data`), not raw voltage. The GUI uses the filtered signal to find and display candidate peaks.
+- **Forgot to filter before template selection**: After using FilterGUI to choose parameters, you must explicitly call `SignalFilter.filter_data()` to produce `filtered_data` for TemplateSelectionGUI.
+- **Template is None**: If you close TemplateSelectionGUI without clicking any peaks, `template_gui.run()` returns `None`. Always check the return value.
 
 ### Jupyter Notebooks
 

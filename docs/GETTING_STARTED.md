@@ -130,26 +130,62 @@ You'll need a **spike template** before running detection. Either:
 
 ```python
 from spikedetect.gui import FilterGUI, TemplateSelectionGUI, ThresholdGUI, SpotCheckGUI
+from spikedetect.pipeline.filtering import SignalFilter
+from spikedetect.pipeline.peaks import PeakFinder
+from spikedetect.pipeline.template import TemplateMatcher
 
 # 1. Tune filter settings with live sliders
 filter_gui = FilterGUI(rec.voltage, params)
 params = filter_gui.run()
 
-# 2. Click on peaks to select seed spikes for the template
+# 2. Filter the data (needed for template selection)
+start_point = round(0.01 * rec.sample_rate)
+unfiltered_data = rec.voltage[start_point:]
+filtered_data = SignalFilter.filter_data(
+    unfiltered_data,
+    fs=params.fs,
+    hp_cutoff=params.hp_cutoff,
+    lp_cutoff=params.lp_cutoff,
+    diff_order=params.diff_order,
+    polarity=params.polarity,
+)
+
+# 3. Click on peaks to select seed spikes for the template
 template_gui = TemplateSelectionGUI(filtered_data, params)
 params.spike_template = template_gui.run()
 
-# 3. Run detection
+# 4. Run initial detection
 result = sd.detect_spikes(rec, params)
 
-# 4. Fine-tune distance/amplitude thresholds
+# 5. Build match_result for the ThresholdGUI scatter plot
+spike_locs = PeakFinder.find_spike_locations(
+    filtered_data,
+    peak_threshold=params.peak_threshold,
+    fs=params.fs,
+    spike_template_width=params.spike_template_width,
+)
+match_result = TemplateMatcher.match(
+    spike_locs=spike_locs,
+    spike_template=params.spike_template,
+    filtered_data=filtered_data,
+    unfiltered_data=unfiltered_data,
+    spike_template_width=params.spike_template_width,
+    fs=params.fs,
+)
+
+# 6. Fine-tune distance/amplitude thresholds
 threshold_gui = ThresholdGUI(match_result, params)
 params = threshold_gui.run()
 
-# 5. Review individual spikes (y/n/arrow keys)
+# 7. Re-run detection with updated thresholds
+result = sd.detect_spikes(rec, params)
+
+# 8. Review individual spikes (y/n/arrow keys)
 spotcheck = SpotCheckGUI(rec, result)
 result = spotcheck.run()
 ```
+
+For a complete runnable example, see `examples/gui_workflow.py` (synthetic data) or `examples/gui_workflow_from_file.py` (from a file).
 
 In Jupyter notebooks, use `%matplotlib widget` at the top of your notebook (requires `pip install ipympl`).
 
