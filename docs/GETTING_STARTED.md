@@ -128,11 +128,48 @@ You'll need a **spike template** before running detection. Either:
 
 ## Step 4a: Interactive workflow (recommended for new data)
 
+The easiest way to get started is to run the included GUI workflow script. It walks you through all 4 interactive GUIs in order:
+
+```bash
+cd spikedetect
+
+# With synthetic data (no file needed -- great for a first test)
+python examples/gui_workflow.py
+
+# With your own recording
+python examples/gui_workflow.py path/to/trial.mat
+
+# ABF files work too
+python examples/gui_workflow.py path/to/recording.abf
+```
+
+The script (`examples/gui_workflow.py`) handles loading, filtering, template matching, and detection for you. Each GUI opens as a pop-up window where you interact, then press **Enter** to move to the next step.
+
+Here is what each GUI does:
+
+1. **FilterGUI** -- Adjust bandpass filter sliders (HP, LP, differentiation order, polarity, peak threshold). The top panel shows the raw trace with raster ticks; the bottom shows the filtered signal with detected peaks (red dots). Press **Enter** to accept.
+
+2. **TemplateSelectionGUI** -- Click on 3-5 clear spike peaks in the filtered data to build a template. Selected peaks turn green and their waveforms appear in the bottom panel. Press **Enter** to accept.
+
+3. **ThresholdGUI** -- A scatter plot of DTW distance vs. amplitude for all candidate peaks. Click to move the threshold lines. Press **b** to toggle between distance and amplitude thresholds. Waveform panels show accepted (blue) and rejected (yellow) spikes. Press **Enter** to accept.
+
+4. **SpotCheckGUI** -- Step through each detected spike one by one. Press **y** to accept, **n** to reject, arrow keys to adjust spike position, **Tab** to skip. Click raster ticks or scatter dots to jump to a specific spike. Press **Enter** when done.
+
+<details>
+<summary>Using the GUIs from your own Python script (click to expand)</summary>
+
+If you want to call the GUIs from your own code instead of using the example script:
+
 ```python
+import spikedetect as sd
 from spikedetect.gui import FilterGUI, TemplateSelectionGUI, ThresholdGUI, SpotCheckGUI
 from spikedetect.pipeline.filtering import SignalFilter
 from spikedetect.pipeline.peaks import PeakFinder
 from spikedetect.pipeline.template import TemplateMatcher
+
+# Load your data
+rec = sd.load_recording("path/to/trial.mat")
+params = sd.SpikeDetectionParams.default(fs=rec.sample_rate)
 
 # 1. Tune filter settings with live sliders
 filter_gui = FilterGUI(rec.voltage, params)
@@ -183,29 +220,11 @@ result = sd.detect_spikes(rec, params)
 # 8. Review individual spikes (y/n/arrow keys)
 spotcheck = SpotCheckGUI(rec, result)
 result = spotcheck.run()
+
+print(result.summary())
 ```
 
-For a complete runnable example:
-
-```bash
-cd spikedetect
-
-# With synthetic data (no file needed)
-python examples/gui_workflow.py
-
-# With a real recording
-python examples/gui_workflow.py path/to/trial.mat
-```
-
-The GUI workflow walks through all 4 steps in order:
-
-1. **FilterGUI** -- Adjust bandpass filter sliders (HP, LP, differentiation order, polarity, peak threshold). The top panel shows the raw trace with raster ticks; the bottom shows the filtered signal with detected peaks (red dots). Press **Enter** to accept.
-
-2. **TemplateSelectionGUI** -- Click on 3-5 clear spike peaks in the filtered data to build a template. Selected peaks turn green and their waveforms appear in the bottom panel. Press **Enter** to accept.
-
-3. **ThresholdGUI** -- A scatter plot of DTW distance vs. amplitude for all candidate peaks. Click to move the threshold lines. Press **b** to toggle between distance and amplitude thresholds. Waveform panels show accepted (blue) and rejected (yellow) spikes. Press **Enter** to accept.
-
-4. **SpotCheckGUI** -- Step through each detected spike one by one. Press **y** to accept, **n** to reject, arrow keys to adjust spike position, **Tab** to skip. Click raster ticks or scatter dots to jump to a specific spike. Press **Enter** when done.
+</details>
 
 ## Step 4b: Batch detection (when you already have a template)
 
@@ -323,14 +342,18 @@ logging.basicConfig(level=logging.INFO)
 ### Installation problems
 
 **"ModuleNotFoundError: No module named 'spikedetect'"**
+
 Make sure you installed from the `spikedetect/` subdirectory (not the repo root):
+
 ```bash
 cd spikeDetection/spikedetect   # <-- this directory has pyproject.toml
 pip install -e .
 ```
 
 **"ModuleNotFoundError: No module named 'h5py'"**
+
 You're trying to load a MATLAB v7.3 HDF5 .mat file. Install the I/O extras:
+
 ```bash
 pip install h5py>=3.8
 # or install all I/O extras:
@@ -338,7 +361,9 @@ pip install -e ".[io]"
 ```
 
 **"ModuleNotFoundError: No module named 'pyabf'"**
+
 You're trying to load an ABF file. Install pyabf:
+
 ```bash
 pip install pyabf>=2.3
 # or install all I/O extras:
@@ -346,12 +371,14 @@ pip install -e ".[io]"
 ```
 
 **"ImportError: pandas is required for to_dataframe()"**
+
 Install pandas:
 ```bash
 pip install pandas
 ```
 
 **numba/numpy version warning** (`_ARRAY_API not found` or `compiled using NumPy 1.x`)
+
 This is harmless -- the pipeline falls back to pure numpy automatically. To silence it:
 ```bash
 # Option 1: Remove numba (simplest, no speed loss for most datasets)
@@ -365,6 +392,7 @@ pip install numba --upgrade
 ```
 
 **GUI windows don't appear (macOS + Anaconda)**
+
 If you run the GUI workflow and see terminal output ("Step 1: FilterGUI...") but no window pops up, this is a known issue with Anaconda's Python on macOS. Anaconda's Python is not a macOS "framework build", so the default `macosx` matplotlib backend cannot display windows properly. The fix is to switch to the Qt5Agg backend:
 
 ```bash
@@ -397,19 +425,25 @@ Then add this at the **top** of your notebook (before any imports):
 ### Detection problems
 
 **"No spike template provided"**
+
 You need to set `params.spike_template` before calling `detect_spikes()`. Use the interactive `TemplateSelectionGUI` or provide a 1-D numpy array from a previous run.
 
 **"High-pass cutoff must be below the Nyquist frequency"**
+
 Your filter cutoff is too high for your sample rate. The cutoff must be less than `sample_rate / 2`. Use `SpikeDetectionParams.default(fs=your_rate)` to get auto-scaled defaults.
 
 **"Expected a Recording object, got ndarray"**
+
 You passed a raw numpy array instead of a Recording object. Wrap it:
+
 ```python
 rec = sd.Recording(name="my_data", voltage=my_array, sample_rate=50000)
 ```
 
 **"Expected SpikeDetectionParams, got dict"**
+
 You passed a dict instead of a SpikeDetectionParams object. Create one:
+
 ```python
 params = sd.SpikeDetectionParams(fs=50000)
 # or from a dict:
