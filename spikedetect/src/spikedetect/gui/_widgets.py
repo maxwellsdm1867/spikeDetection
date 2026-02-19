@@ -77,6 +77,8 @@ def blocking_wait(fig: Figure) -> str | None:
     cid_close = fig.canvas.mpl_connect("close_event", _on_close)
 
     try:
+        fig.show()
+        fig.canvas.draw_idle()
         fig.canvas.start_event_loop(timeout=0)
     except Exception:
         # Fallback: use plt.waitforbuttonpress

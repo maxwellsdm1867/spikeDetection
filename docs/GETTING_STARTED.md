@@ -185,9 +185,27 @@ spotcheck = SpotCheckGUI(rec, result)
 result = spotcheck.run()
 ```
 
-For a complete runnable example, see `examples/gui_workflow.py` (synthetic data) or `examples/gui_workflow_from_file.py` (from a file).
+For a complete runnable example:
 
-In Jupyter notebooks, use `%matplotlib widget` at the top of your notebook (requires `pip install ipympl`).
+```bash
+cd spikedetect
+
+# With synthetic data (no file needed)
+python examples/gui_workflow.py
+
+# With a real recording
+python examples/gui_workflow.py path/to/trial.mat
+```
+
+The GUI workflow walks through all 4 steps in order:
+
+1. **FilterGUI** -- Adjust bandpass filter sliders (HP, LP, differentiation order, polarity, peak threshold). The top panel shows the raw trace with raster ticks; the bottom shows the filtered signal with detected peaks (red dots). Press **Enter** to accept.
+
+2. **TemplateSelectionGUI** -- Click on 3-5 clear spike peaks in the filtered data to build a template. Selected peaks turn green and their waveforms appear in the bottom panel. Press **Enter** to accept.
+
+3. **ThresholdGUI** -- A scatter plot of DTW distance vs. amplitude for all candidate peaks. Click to move the threshold lines. Press **b** to toggle between distance and amplitude thresholds. Waveform panels show accepted (blue) and rejected (yellow) spikes. Press **Enter** to accept.
+
+4. **SpotCheckGUI** -- Step through each detected spike one by one. Press **y** to accept, **n** to reject, arrow keys to adjust spike position, **Tab** to skip. Click raster ticks or scatter dots to jump to a specific spike. Press **Enter** when done.
 
 ## Step 4b: Batch detection (when you already have a template)
 
@@ -346,12 +364,32 @@ pip install "numpy<2"
 pip install numba --upgrade
 ```
 
+**GUI windows don't appear (macOS + Anaconda)**
+If you run the GUI workflow and see terminal output ("Step 1: FilterGUI...") but no window pops up, this is a known issue with Anaconda's Python on macOS. Anaconda's Python is not a macOS "framework build", so the default `macosx` matplotlib backend cannot display windows properly. The fix is to switch to the Qt5Agg backend:
+
+```bash
+# One-time fix: set Qt5Agg as your default matplotlib backend
+mkdir -p ~/.config/matplotlib && echo "backend: Qt5Agg" > ~/.config/matplotlib/matplotlibrc
+```
+
+If PyQt5 is not installed:
+
+```bash
+conda install pyqt
+```
+
+Then re-run the GUI workflow -- windows will appear correctly. This is only needed on macOS with Anaconda; **Windows and Linux are not affected**.
+
 **Jupyter GUIs are not interactive / widgets don't respond**
+
 Install ipympl and use the widget backend:
+
 ```bash
 pip install ipympl
 ```
+
 Then add this at the **top** of your notebook (before any imports):
+
 ```python
 %matplotlib widget
 ```
@@ -378,14 +416,16 @@ params = sd.SpikeDetectionParams(fs=50000)
 params = sd.SpikeDetectionParams.from_dict(my_dict)
 ```
 
-**Very few or zero spikes detected**
+### Very few or zero spikes detected
+
 - Try lowering `params.peak_threshold` to find more candidates
 - Try increasing `params.distance_threshold` to accept more candidates
 - Try lowering `params.amplitude_threshold`
 - Try `params.polarity = -1` if your spikes go downward
 - Use the `FilterGUI` to visually check that filtering reveals spikes
 
-**Too many false positives**
+### Too many false positives
+
 - Lower `params.distance_threshold` (stricter template match)
 - Raise `params.amplitude_threshold`
 - Use `SpotCheckGUI` to manually review and reject bad detections
