@@ -95,5 +95,46 @@ class SignalFilter:
         return (polarity * diff_filt).astype(np.float64)
 
 
-# Backwards-compatible alias
+    @staticmethod
+    def pre_filter(
+        voltage: np.ndarray,
+        fs: float,
+        cutoff: float = 3000.0,
+        order: int = 12,
+    ) -> np.ndarray:
+        """Apply a low-pass pre-filter to raw voltage before spike detection.
+
+        Ports MATLAB ``lowPassFilterMembraneVoltage.m``. Subtracts the first
+        sample (DC baseline) before filtering and adds it back afterwards,
+        matching the MATLAB ``filter(d1, v - base) + base`` pattern.
+
+        Parameters
+        ----------
+        voltage : np.ndarray
+            Raw 1-D voltage trace.
+        fs : float
+            Sampling rate in Hz.
+        cutoff : float, optional
+            Low-pass cutoff frequency in Hz. Default 3000.
+        order : int, optional
+            Butterworth filter order. Default 12 (matches MATLAB ``designfilt``).
+
+        Returns
+        -------
+        np.ndarray
+            Low-pass filtered 1-D float64 array, same length as input.
+        """
+        data = np.asarray(voltage, dtype=np.float64).ravel()
+        if len(data) == 0:
+            return data
+
+        wn = cutoff / (fs / 2.0)
+        b, a = butter(order, wn, btype="low")
+        base = data[0]
+        filtered = lfilter(b, a, data - base) + base
+        return filtered.astype(np.float64)
+
+
+# Backwards-compatible aliases
 filter_data = SignalFilter.filter_data
+pre_filter = SignalFilter.pre_filter

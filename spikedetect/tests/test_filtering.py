@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from spikedetect.pipeline.filtering import filter_data
+from spikedetect.pipeline.filtering import filter_data, pre_filter
 
 
 @pytest.fixture
@@ -75,3 +75,36 @@ class TestFilterData:
         signal, fs = sample_signal
         result = filter_data(signal, fs=fs, hp_cutoff=200, lp_cutoff=800)
         assert result.ndim == 1
+
+
+class TestPreFilter:
+    def test_pre_filter_output_length(self, sample_signal):
+        signal, fs = sample_signal
+        result = pre_filter(signal, fs=fs, cutoff=3000.0)
+        assert len(result) == len(signal)
+
+    def test_pre_filter_removes_high_frequency(self):
+        fs = 10000
+        t = np.arange(fs) / fs
+        # Signal with a low-freq component and a high-freq component
+        low = np.sin(2 * np.pi * 100 * t)
+        high = np.sin(2 * np.pi * 4500 * t)
+        signal = low + high
+
+        result = pre_filter(signal, fs=fs, cutoff=3000.0)
+
+        # The high-frequency (4500 Hz) should be attenuated
+        # Check via FFT: power at 4500 Hz should be much less than in the original
+        freqs = np.fft.rfftfreq(len(signal), 1.0 / fs)
+        fft_orig = np.abs(np.fft.rfft(signal))
+        fft_filt = np.abs(np.fft.rfft(result))
+
+        idx_high = np.argmin(np.abs(freqs - 4500))
+        assert fft_filt[idx_high] < 0.1 * fft_orig[idx_high]
+
+    def test_pre_filter_preserves_dc_offset(self, sample_signal):
+        signal, fs = sample_signal
+        # signal has DC offset of 5.0
+        result = pre_filter(signal, fs=fs, cutoff=3000.0)
+        # After settling, mean should be close to original DC offset
+        assert abs(np.mean(result[500:]) - np.mean(signal[500:])) < 0.5

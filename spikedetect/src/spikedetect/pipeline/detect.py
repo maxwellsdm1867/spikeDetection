@@ -38,6 +38,7 @@ class SpikeDetector:
         recording: Recording,
         params: SpikeDetectionParams,
         start_offset: float = 0.01,
+        pre_filter_cutoff: float | None = None,
     ) -> SpikeDetectionResult:
         """Run the full non-interactive spike detection pipeline.
 
@@ -51,6 +52,11 @@ class SpikeDetector:
         start_offset : float, optional
             Fraction of recording to skip at the start (default 0.01 = 1%).
             Matches MATLAB ``start_point = round(.01*fs)``.
+        pre_filter_cutoff : float or None, optional
+            If not None, apply a low-pass pre-filter at this cutoff (Hz) to
+            the raw voltage before trimming and running the pipeline. Ports
+            MATLAB ``lowPassFilterMembraneVoltage.m``. Default None (no
+            pre-filtering).
 
         Returns
         -------
@@ -97,6 +103,11 @@ class SpikeDetector:
 
         voltage = recording.voltage.copy()
         fs = params.fs
+
+        # Optional low-pass pre-filter (MATLAB lowPassFilterMembraneVoltage)
+        if pre_filter_cutoff is not None:
+            logger.info("Applying pre-filter: cutoff=%.0f Hz", pre_filter_cutoff)
+            voltage = SignalFilter.pre_filter(voltage, fs, cutoff=pre_filter_cutoff)
         duration_sec = len(voltage) / fs
         logger.info(
             "Starting spike detection on '%s' (%.1f s, %.0f Hz)",

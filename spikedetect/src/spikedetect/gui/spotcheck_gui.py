@@ -63,6 +63,7 @@ class SpotCheckGUI:
         self._current_dot = None
         self._scat_in = None
         self._scat_out = None
+        self._raster_lines = None
 
     def run(self) -> SpikeDetectionResult:
         """Display the GUI and block until the user finishes reviewing.
@@ -264,7 +265,12 @@ class SpotCheckGUI:
         self._ax_trace.plot(t, voltage, color=(0.85, 0.325, 0.098), linewidth=0.5)
         if len(self._spikes) > 0:
             y_top = np.max(voltage) + 0.02 * np.ptp(voltage)
-            raster_ticks(self._ax_trace, self._spikes / self.result.params.fs, y_top)
+            tick_lines = raster_ticks(
+                self._ax_trace, self._spikes / self.result.params.fs, y_top,
+                picker=5,
+            )
+            if tick_lines:
+                self._raster_lines = tick_lines[0]
         self._ax_trace.set_xlim(t[0], t[-1])
 
         filt_mean = self._filtered - np.mean(self._filtered)
@@ -335,8 +341,32 @@ class SpotCheckGUI:
                      amp_max + 0.05 * abs(amp_max - amp_min))
         ax.set_title("Click to select spikes, tab to move")
 
-        # Connect pick event for clicking on scatter dots
+        # Connect pick events for clicking on scatter dots and raster ticks
         self.fig.canvas.mpl_connect("pick_event", self._on_scatter_pick)
+        self.fig.canvas.mpl_connect("pick_event", self._on_raster_pick)
+
+    def _on_raster_pick(self, event) -> None:
+        """Handle clicking on a raster tick mark to navigate to that spike."""
+        if event.mouseevent.inaxes != self._ax_trace:
+            return
+        if self._raster_lines is None or event.artist is not self._raster_lines:
+            return
+
+        xdata = event.mouseevent.xdata
+        if xdata is None:
+            return
+
+        # Convert x-position (seconds) to sample index
+        fs = self.result.params.fs
+        sample = round(xdata * fs)
+
+        # Find the closest spike
+        if len(self._spikes) == 0:
+            return
+        diffs = np.abs(self._spikes.astype(np.int64) - int(sample))
+        self._spike_idx = int(np.argmin(diffs))
+        self._show_current_spike()
+        self.fig.canvas.draw_idle()
 
     def _on_scatter_pick(self, event) -> None:
         """Handle clicking on a scatter dot to navigate to that spike."""

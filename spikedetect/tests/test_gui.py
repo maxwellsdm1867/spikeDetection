@@ -414,6 +414,16 @@ class TestSpotCheckGUI:
         # Scatter should have accepted dots (blue)
         assert gui._scat_in is not None or gui._scat_out is not None
 
+    def test_raster_ticks_pickable(self, recording_and_result):
+        rec, result = recording_and_result
+        if result.n_spikes == 0:
+            pytest.skip("No spikes detected")
+        gui = SpotCheckGUI(rec, result)
+        gui._setup()
+        gui._build_figure()
+        assert gui._raster_lines is not None
+        assert gui._raster_lines.get_picker() is not None
+
     def test_scatter_current_dot_updates(self, recording_and_result):
         rec, result = recording_and_result
         if result.n_spikes == 0:

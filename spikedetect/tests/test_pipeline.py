@@ -109,3 +109,8 @@ class TestDetectSpikes:
         result = detect_spikes(recording, params)
         assert result.spike_times.dtype == np.int64
         assert result.spike_times_uncorrected.dtype == np.int64
+
+    def test_detect_with_pre_filter(self, pipeline_recording):
+        recording, params, _ = pipeline_recording
+        result = detect_spikes(recording, params, pre_filter_cutoff=3000.0)
+        assert isinstance(result, SpikeDetectionResult)

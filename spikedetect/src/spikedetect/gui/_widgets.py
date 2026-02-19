@@ -12,6 +12,7 @@ def raster_ticks(
     locations: np.ndarray,
     y_pos: float,
     tick_height: float | None = None,
+    picker: float | None = None,
     **kwargs,
 ) -> list:
     """Draw raster tick marks at given locations on an axis.
@@ -27,6 +28,9 @@ def raster_ticks(
     tick_height : float or None, optional
         Height of each tick mark. If None, defaults to 2% of the current
         y-axis range.
+    picker : float or None, optional
+        If not None, set the picker tolerance on the returned LineCollection
+        to enable pick events. Default None (not pickable).
     **kwargs
         Additional keyword arguments passed to ``ax.vlines``.
 
@@ -49,6 +53,8 @@ def raster_ticks(
     defaults.update(kwargs)
 
     lines = ax.vlines(locations, y_pos, y_pos + tick_height, **defaults)
+    if picker is not None:
+        lines.set_picker(picker)
     return [lines]
 
 
