@@ -14,7 +14,7 @@ If you don't have Python yet, install [Anaconda](https://www.anaconda.com/downlo
 
 ```bash
 # Clone the repository
-git clone https://github.com/tony-azevedo/spikeDetection.git
+git clone https://github.com/maxwellsdm1867/spikeDetection.git
 
 # IMPORTANT: cd into the spikedetect/ subdirectory (where pyproject.toml lives)
 cd spikeDetection/spikedetect

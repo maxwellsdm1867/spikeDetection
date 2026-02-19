@@ -26,10 +26,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/tony-azevedo/spikeDetection"
-Repository = "https://github.com/tony-azevedo/spikeDetection"
-"Bug Tracker" = "https://github.com/tony-azevedo/spikeDetection/issues"
-Documentation = "https://github.com/tony-azevedo/spikeDetection/tree/master/docs"
+Homepage = "https://github.com/maxwellsdm1867/spikeDetection"
+Repository = "https://github.com/maxwellsdm1867/spikeDetection"
+"Bug Tracker" = "https://github.com/maxwellsdm1867/spikeDetection/issues"
+Documentation = "https://github.com/maxwellsdm1867/spikeDetection/tree/master/docs"
 
 dependencies = [
     "numpy>=1.24",
