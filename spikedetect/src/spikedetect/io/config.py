@@ -1,6 +1,7 @@
-"""JSON-based parameter persistence (replaces MATLAB setacqpref/getacqpref).
+"""JSON-based parameter persistence.
 
-Parameters are stored as JSON files under ``~/.spikedetect/``.
+Replaces MATLAB setacqpref/getacqpref. Parameters are
+stored as JSON files under ``~/.spikedetect/``.
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ def _config_dir() -> Path:
 
 
 def _param_path(input_field: str, fs: float) -> Path:
-    """Build the config file path matching MATLAB convention.
+    """Build the config file path for MATLAB convention.
 
     MATLAB key: ``Spike_params_{inputToAnalyze}_fs{fs}``
     """
@@ -33,20 +34,18 @@ def save_params(
 ) -> Path:
     """Save detection parameters to JSON.
 
-    Parameters
-    ----------
-    params : SpikeDetectionParams
-        Parameters to persist.
-    input_field : str
-        Name of the input channel (e.g., ``'voltage_1'``).
+    Args:
+        params: Parameters to persist.
+        input_field: Name of the input channel
+            (e.g., ``'voltage_1'``).
 
-    Returns
-    -------
-    path : Path
+    Returns:
         Path to the saved JSON file.
     """
     path = _param_path(input_field, params.fs)
-    path.write_text(json.dumps(params.to_dict(), indent=2))
+    path.write_text(
+        json.dumps(params.to_dict(), indent=2)
+    )
     return path
 
 
@@ -56,17 +55,14 @@ def load_params(
 ) -> SpikeDetectionParams | None:
     """Load detection parameters from JSON.
 
-    Parameters
-    ----------
-    input_field : str
-        Name of the input channel.
-    fs : float
-        Sample rate (used to locate the correct config file).
+    Args:
+        input_field: Name of the input channel.
+        fs: Sample rate (used to locate the correct
+            config file).
 
-    Returns
-    -------
-    params : SpikeDetectionParams or None
-        Loaded parameters, or None if no config file exists.
+    Returns:
+        Loaded parameters, or ``None`` if no config file
+        exists.
     """
     path = _param_path(input_field, fs)
     if not path.exists():
@@ -78,4 +74,6 @@ def load_params(
 def list_saved_params() -> list[Path]:
     """List all saved parameter files."""
     config_dir = _config_dir()
-    return sorted(config_dir.glob("Spike_params_*.json"))
+    return sorted(
+        config_dir.glob("Spike_params_*.json")
+    )

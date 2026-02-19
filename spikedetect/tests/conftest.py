@@ -50,13 +50,17 @@ def synthetic_recording(spike_template):
     noise = rng.normal(0, 0.01, n_samples)
 
     # Embed spikes at known positions (well separated, away from edges)
-    spike_positions = np.array([5000, 8000, 12000, 18000, 24000, 30000, 35000, 40000, 43000, 46000])
+    spike_positions = np.array(
+        [5000, 8000, 12000, 18000, 24000,
+         30000, 35000, 40000, 43000, 46000]
+    )
     half_w = len(spike_template) // 2
 
     for pos in spike_positions:
         start = pos - half_w
         end = start + len(spike_template)
-        noise[start:end] += spike_template * 5.0  # Scale up to be clearly visible
+        # Scale up to be clearly visible
+        noise[start:end] += spike_template * 5.0
 
     recording = Recording(
         name="synthetic_test",

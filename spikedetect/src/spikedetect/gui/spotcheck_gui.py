@@ -14,7 +14,9 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 
 from spikedetect.gui._widgets import raster_ticks, blocking_wait
-from spikedetect.models import Recording, SpikeDetectionParams, SpikeDetectionResult
+from spikedetect.models import (
+    Recording, SpikeDetectionParams, SpikeDetectionResult,
+)
 from spikedetect.pipeline.filtering import filter_data
 from spikedetect.pipeline.peaks import PeakFinder
 from spikedetect.pipeline.template import TemplateMatcher, TemplateMatchResult
@@ -31,22 +33,21 @@ _COLOR_CURRENT = (1.0, 0.0, 0.0)          # red
 class SpotCheckGUI:
     """Interactive GUI for reviewing spikes one by one.
 
-    Parameters
-    ----------
-    recording : Recording
-        The electrophysiology recording.
-    result : SpikeDetectionResult
-        Detection result to review and potentially modify.
+    Args:
+        recording: The electrophysiology recording.
+        result: Detection result to review and potentially
+            modify.
 
-    Attributes
-    ----------
-    result : SpikeDetectionResult
-        The (possibly modified) detection result.
-    fig : matplotlib.figure.Figure
-        The GUI figure.
+    Attributes:
+        result: The (possibly modified) detection result.
+        fig: The GUI figure.
     """
 
-    def __init__(self, recording: Recording, result: SpikeDetectionResult) -> None:
+    def __init__(
+        self,
+        recording: Recording,
+        result: SpikeDetectionResult,
+    ) -> None:
         self._recording = recording
         self.result = deepcopy(result)
         self.fig = None
@@ -66,19 +67,17 @@ class SpotCheckGUI:
         self._raster_lines = None
 
     def run(self) -> SpikeDetectionResult:
-        """Display the GUI and block until the user finishes reviewing.
+        """Display the GUI and block until the user finishes.
 
         Keyboard controls:
             y       : Accept spike and move to next
             n       : Reject spike (remove) and move to next
-            right   : Shift spike position right (+10 samples, +1 with shift)
-            left    : Shift spike position left (-10 samples, -1 with shift)
+            right   : Shift spike position right
+            left    : Shift spike position left
             tab     : Skip to next spike without decision
             enter   : Finish review
 
-        Returns
-        -------
-        SpikeDetectionResult
+        Returns:
             Updated result with spot_checked set to True.
         """
         self._setup()
@@ -192,12 +191,17 @@ class SpotCheckGUI:
 
         # Build mapping: for each accepted spike, find the closest candidate
         # (mirrors MATLAB spikes_map logic)
-        self._candidate_is_accepted = np.zeros(len(self._candidate_locs), dtype=bool)
+        self._candidate_is_accepted = np.zeros(
+            len(self._candidate_locs), dtype=bool,
+        )
         self._spike_to_candidate = {}
 
         for i, spike_pos in enumerate(self._spikes):
             if len(self._candidate_locs) > 0:
-                diffs = np.abs(self._candidate_locs.astype(np.int64) - int(spike_pos))
+                diffs = np.abs(
+                    self._candidate_locs.astype(np.int64)
+                    - int(spike_pos)
+                )
                 best = int(np.argmin(diffs))
                 self._candidate_is_accepted[best] = True
                 self._spike_to_candidate[i] = best
@@ -212,8 +216,12 @@ class SpotCheckGUI:
 
         waveforms = []
         for s in self._spikes:
-            if s + window[0] >= 0 and s + window[-1] < len(self._recording.voltage):
-                waveforms.append(self._recording.voltage[s + window])
+            if (s + window[0] >= 0
+                    and s + window[-1] < len(
+                        self._recording.voltage)):
+                waveforms.append(
+                    self._recording.voltage[s + window]
+                )
 
         if len(waveforms) > 0:
             mean_wf = np.mean(waveforms, axis=0)
@@ -221,8 +229,12 @@ class SpotCheckGUI:
             mx = np.max(mean_wf)
             if mx > 0:
                 mean_wf = mean_wf / mx
-            self._mean_waveform = smooth(mean_wf - mean_wf[0], smth_w)
-            self._mean_2d = smooth_and_differentiate(self._mean_waveform, smth_w)
+            self._mean_waveform = smooth(
+                mean_wf - mean_wf[0], smth_w,
+            )
+            self._mean_2d = smooth_and_differentiate(
+                self._mean_waveform, smth_w,
+            )
         else:
             self._mean_waveform = np.zeros(len(window))
             self._mean_2d = np.zeros(len(window))
@@ -262,11 +274,15 @@ class SpotCheckGUI:
         n = len(voltage)
         t = np.arange(n) / self.result.params.fs
 
-        self._ax_trace.plot(t, voltage, color=(0.85, 0.325, 0.098), linewidth=0.5)
+        self._ax_trace.plot(
+            t, voltage,
+            color=(0.85, 0.325, 0.098), linewidth=0.5,
+        )
         if len(self._spikes) > 0:
             y_top = np.max(voltage) + 0.02 * np.ptp(voltage)
+            spike_t = self._spikes / self.result.params.fs
             tick_lines = raster_ticks(
-                self._ax_trace, self._spikes / self.result.params.fs, y_top,
+                self._ax_trace, spike_t, y_top,
                 picker=5,
             )
             if tick_lines:
@@ -274,7 +290,10 @@ class SpotCheckGUI:
         self._ax_trace.set_xlim(t[0], t[-1])
 
         filt_mean = self._filtered - np.mean(self._filtered)
-        self._ax_filt.plot(t, filt_mean, color=(0.0, 0.45, 0.74), linewidth=0.5)
+        self._ax_filt.plot(
+            t, filt_mean,
+            color=(0.0, 0.45, 0.74), linewidth=0.5,
+        )
         self._ax_filt.set_xlim(t[0], t[-1])
 
         if self._recording.current is not None:
@@ -412,7 +431,9 @@ class SpotCheckGUI:
 
         # If no spike maps directly, find the closest spike
         if len(self._spikes) > 0:
-            diffs = np.abs(self._spikes.astype(np.int64) - int(target_loc))
+            diffs = np.abs(
+                self._spikes.astype(np.int64) - int(target_loc)
+            )
             self._spike_idx = int(np.argmin(diffs))
             self._show_current_spike()
             self.fig.canvas.draw_idle()
@@ -453,12 +474,18 @@ class SpotCheckGUI:
 
         if self._scat_in is not None:
             if np.any(accepted_mask):
-                self._scat_in.set_data(dists[accepted_mask], amps[accepted_mask])
+                self._scat_in.set_data(
+                    dists[accepted_mask],
+                    amps[accepted_mask],
+                )
             else:
                 self._scat_in.set_data([], [])
         if self._scat_out is not None:
             if np.any(rejected_mask):
-                self._scat_out.set_data(dists[rejected_mask], amps[rejected_mask])
+                self._scat_out.set_data(
+                    dists[rejected_mask],
+                    amps[rejected_mask],
+                )
             else:
                 self._scat_out.set_data([], [])
 
@@ -494,9 +521,13 @@ class SpotCheckGUI:
 
         # Mean waveform overlay
         if hasattr(self, "_mean_waveform"):
-            amp = np.mean(np.abs(voltage[win_start:win_end] - voltage[spike]))
+            amp = np.mean(np.abs(
+                voltage[win_start:win_end] - voltage[spike]
+            ))
             scale = max(amp, 0.01)
-            mean_scaled = self._mean_waveform * scale + voltage[spike]
+            mean_scaled = (
+                self._mean_waveform * scale + voltage[spike]
+            )
             if len(mean_scaled) == len(t_win):
                 self._ax_spike.plot(
                     t_win, mean_scaled,
@@ -509,10 +540,13 @@ class SpotCheckGUI:
                 region_2d = self._mean_2d[smth_start + 1 : smth_end - 1]
                 if np.max(np.abs(region_2d)) > 0:
                     region_scaled = (
-                        region_2d / np.max(np.abs(region_2d)) * scale + voltage[spike]
+                        region_2d
+                        / np.max(np.abs(region_2d))
+                        * scale + voltage[spike]
                     )
                     t_2d = np.arange(
-                        win_start + smth_start + 1, win_start + smth_end - 1
+                        win_start + smth_start + 1,
+                        win_start + smth_end - 1,
                     ) / fs
                     if len(t_2d) == len(region_scaled):
                         self._ax_spike.plot(

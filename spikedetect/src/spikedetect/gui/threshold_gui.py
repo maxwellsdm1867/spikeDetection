@@ -23,19 +23,14 @@ from spikedetect.utils import smooth, smooth_and_differentiate
 class ThresholdGUI:
     """Interactive GUI for adjusting DTW distance and amplitude thresholds.
 
-    Parameters
-    ----------
-    match_result : TemplateMatchResult
-        Results from template matching (distances, amplitudes, waveforms).
-    params : SpikeDetectionParams
-        Current detection parameters.
+    Args:
+        match_result: Results from template matching (distances,
+            amplitudes, waveforms).
+        params: Current detection parameters.
 
-    Attributes
-    ----------
-    params : SpikeDetectionParams
-        Parameters updated by user interaction.
-    fig : matplotlib.figure.Figure
-        The GUI figure.
+    Attributes:
+        params: Parameters updated by user interaction.
+        fig: The GUI figure.
     """
 
     def __init__(
@@ -49,13 +44,12 @@ class ThresholdGUI:
     def run(self) -> SpikeDetectionParams:
         """Display the GUI and block until the user finishes.
 
-        The user clicks on the scatter plot to reposition the active
-        threshold line. Press 'b' to toggle between distance and
-        amplitude thresholds. Press Enter or close the figure to accept.
+        The user clicks on the scatter plot to reposition the
+        active threshold line. Press 'b' to toggle between
+        distance and amplitude thresholds. Press Enter or close
+        the figure to accept.
 
-        Returns
-        -------
-        SpikeDetectionParams
+        Returns:
             Updated parameters with new threshold values.
         """
         self._build_figure()
@@ -183,8 +177,14 @@ class ThresholdGUI:
         ylim_hi = max(np.max(amps), at) + 0.1 * max(abs(np.ptp(amps)), 0.1)
         xlim_hi = max(np.max(dists), dt) * 1.1
 
-        dist_color = (0, 1, 1) if self._active_threshold == "distance" else (1, 0, 0)
-        amp_color = (0, 1, 1) if self._active_threshold == "amplitude" else (1, 0, 0)
+        dist_color = (
+            (0, 1, 1) if self._active_threshold == "distance"
+            else (1, 0, 0)
+        )
+        amp_color = (
+            (0, 1, 1) if self._active_threshold == "amplitude"
+            else (1, 0, 0)
+        )
 
         self._ax_scatter.axvline(dt, color=dist_color, linewidth=1.5)
         self._ax_scatter.axhline(at, color=amp_color, linewidth=1.5)
@@ -293,7 +293,9 @@ class ThresholdGUI:
 
         # --- Mean spike panel (bottom) ---
         self._ax_mean.cla()
-        self._ax_mean.set_title("Mean accepted spike (click to use as template)")
+        self._ax_mean.set_title(
+            "Mean accepted spike (click to use as template)"
+        )
         if np.any(suspect) and m.unfiltered_candidates.shape[1] > 0:
             mean_uf = np.mean(m.unfiltered_candidates[:, suspect], axis=1)
             self._ax_mean.plot(

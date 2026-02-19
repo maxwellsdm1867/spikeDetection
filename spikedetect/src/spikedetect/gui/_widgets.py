@@ -17,26 +17,19 @@ def raster_ticks(
 ) -> list:
     """Draw raster tick marks at given locations on an axis.
 
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        The axes to draw on.
-    locations : np.ndarray
-        1-D array of x-positions for tick marks.
-    y_pos : float
-        The y-coordinate for the base of the tick marks.
-    tick_height : float or None, optional
-        Height of each tick mark. If None, defaults to 2% of the current
-        y-axis range.
-    picker : float or None, optional
-        If not None, set the picker tolerance on the returned LineCollection
-        to enable pick events. Default None (not pickable).
-    **kwargs
-        Additional keyword arguments passed to ``ax.vlines``.
+    Args:
+        ax: The axes to draw on.
+        locations: 1-D array of x-positions for tick marks.
+        y_pos: The y-coordinate for the base of the ticks.
+        tick_height: Height of each tick mark. If None,
+            defaults to 2% of the current y-axis range.
+        picker: If not None, set the picker tolerance on the
+            returned LineCollection to enable pick events.
+            Default None (not pickable).
+        **kwargs: Additional keyword arguments passed to
+            ``ax.vlines``.
 
-    Returns
-    -------
-    list
+    Returns:
         List of LineCollection objects created.
     """
     locations = np.asarray(locations).ravel()
@@ -61,16 +54,13 @@ def raster_ticks(
 def blocking_wait(fig: Figure) -> str | None:
     """Block until user presses a key or closes the figure.
 
-    Works in both interactive (Qt/Tk) and notebook (ipympl) modes.
+    Works in both interactive (Qt/Tk) and notebook (ipympl)
+    modes.
 
-    Parameters
-    ----------
-    fig : matplotlib.figure.Figure
-        The figure to wait on.
+    Args:
+        fig: The figure to wait on.
 
-    Returns
-    -------
-    str or None
+    Returns:
         The key pressed, or None if the figure was closed.
     """
     result = {"key": None}

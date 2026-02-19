@@ -49,7 +49,8 @@ class TestConfigSaveLoad:
         assert loaded.distance_threshold == params.distance_threshold
         assert loaded.amplitude_threshold == params.amplitude_threshold
         assert loaded.polarity == params.polarity
-        assert loaded.likely_inflection_point_peak == params.likely_inflection_point_peak
+        assert (loaded.likely_inflection_point_peak
+                == params.likely_inflection_point_peak)
         assert loaded.last_filename == params.last_filename
         np.testing.assert_array_equal(loaded.spike_template, template)
 

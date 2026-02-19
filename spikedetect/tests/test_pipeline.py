@@ -28,30 +28,45 @@ class TestDetectSpikes:
         noise = rng.normal(0, 0.001, n_samples)
 
         # Embed sharp voltage transients that will survive filtering
-        true_positions = np.array([5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000])
+        true_positions = np.array(
+            [5000, 10000, 15000, 20000,
+             25000, 30000, 35000, 40000]
+        )
         for pos in true_positions:
             t_local = np.arange(-25, 26) / fs
             spike = 5.0 * np.exp(-0.5 * (t_local / 0.0003) ** 2)
             noise[pos - 25:pos + 26] += spike
 
-        params = SpikeDetectionParams(fs=fs, hp_cutoff=200, lp_cutoff=800, diff_order=1, polarity=1)
+        params = SpikeDetectionParams(
+            fs=fs, hp_cutoff=200, lp_cutoff=800,
+            diff_order=1, polarity=1,
+        )
 
         # Simulate what detect_spikes does: trim start then filter
         start_point = round(0.01 * fs)  # = 100
         unfiltered_data = noise[start_point:]
-        filtered = filter_data(unfiltered_data, fs, params.hp_cutoff, params.lp_cutoff, params.diff_order, params.polarity)
+        filtered = filter_data(
+            unfiltered_data, fs,
+            params.hp_cutoff, params.lp_cutoff,
+            params.diff_order, params.polarity,
+        )
 
         # Extract template at the first spike position (adjusted for trim)
         stw = params.spike_template_width
         half = stw // 2
         spike_in_trimmed = true_positions[0] - start_point
-        template = filtered[spike_in_trimmed - half:spike_in_trimmed + half + 1].copy()
+        idx_start = spike_in_trimmed - half
+        idx_end = spike_in_trimmed + half + 1
+        template = filtered[idx_start:idx_end].copy()
 
         params.spike_template = template
         params.peak_threshold = 0.005
         params.amplitude_threshold = 0.001
 
-        recording = Recording(name="pipeline_test", voltage=noise, sample_rate=fs)
+        recording = Recording(
+            name="pipeline_test",
+            voltage=noise, sample_rate=fs,
+        )
         return recording, params, true_positions
 
     def test_detects_embedded_spikes(self, pipeline_recording):
@@ -75,7 +90,10 @@ class TestDetectSpikes:
             if min_dist < tolerance:
                 matched += 1
 
-        assert matched >= 1, f"Only {matched} out of {result.n_spikes} detected spikes matched true positions"
+        assert matched >= 1, (
+            f"Only {matched} out of {result.n_spikes} "
+            "detected spikes matched true positions"
+        )
 
     def test_returns_spike_detection_result(self, pipeline_recording):
         recording, params, _ = pipeline_recording
@@ -88,7 +106,11 @@ class TestDetectSpikes:
     def test_raises_without_template(self):
         from spikedetect.models import Recording, SpikeDetectionParams
 
-        recording = Recording(name="test", voltage=np.zeros(10000), sample_rate=10000)
+        recording = Recording(
+            name="test",
+            voltage=np.zeros(10000),
+            sample_rate=10000,
+        )
         params = SpikeDetectionParams(fs=10000)
         with pytest.raises(ValueError, match="No spike template provided"):
             detect_spikes(recording, params)

@@ -2,7 +2,10 @@
 
 import numpy as np
 
-from spikedetect.pipeline.inflection import estimate_spike_times, likely_inflection_point
+from spikedetect.pipeline.inflection import (
+    estimate_spike_times,
+    likely_inflection_point,
+)
 
 
 class TestLikelyInflectionPoint:
@@ -21,7 +24,10 @@ class TestLikelyInflectionPoint:
         waveforms = np.zeros((n_window, n_candidates))
         for i in range(n_candidates):
             # Embed the template with slight noise
-            waveforms[:, i] = spike_template[: n_window] + rng.normal(0, 0.01, n_window)
+            waveforms[:, i] = (
+                spike_template[:n_window]
+                + rng.normal(0, 0.01, n_window)
+            )
 
         dtw_distances = rng.uniform(0.1, 5.0, n_candidates)
 
@@ -45,7 +51,9 @@ class TestLikelyInflectionPoint:
         waveforms = np.zeros((n_window, 5))
         dtw_distances = np.zeros(5)
 
-        inflection_peak, _ = likely_inflection_point(waveforms, dtw_distances, stw, fs)
+        inflection_peak, _ = likely_inflection_point(
+            waveforms, dtw_distances, stw, fs,
+        )
         # Should return idx_m fallback
         assert inflection_peak == round(stw * 4 / 5)
 
@@ -65,7 +73,10 @@ class TestEstimateSpikeTimes:
         spike_locs = np.array([1000, 2000, 3000, 4000, 5000], dtype=np.int64)
         waveforms = np.zeros((n_window, n_spikes))
         for i in range(n_spikes):
-            waveforms[:, i] = spike_template[: n_window] + rng.normal(0, 0.01, n_window)
+            waveforms[:, i] = (
+                spike_template[:n_window]
+                + rng.normal(0, 0.01, n_window)
+            )
 
         dtw_distances = rng.uniform(0.1, 5.0, n_spikes)
 

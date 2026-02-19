@@ -54,7 +54,9 @@ class SpikeDetectionParams:
         if self.spike_template_width == 0:
             self.spike_template_width = round(0.005 * self.fs) + 1
         if self.spike_template is not None:
-            self.spike_template = np.asarray(self.spike_template, dtype=np.float64)
+            self.spike_template = np.asarray(
+                self.spike_template, dtype=np.float64
+            )
             if self.spike_template.ndim != 1:
                 raise ValueError(
                     f"spike_template must be a 1-D array, got shape "
@@ -69,10 +71,8 @@ class SpikeDetectionParams:
         The high-pass and low-pass cutoffs are automatically scaled to
         stay below the Nyquist frequency when using low sample rates.
 
-        Parameters
-        ----------
-        fs : float
-            Sample rate in Hz (default 10000).
+        Args:
+            fs: Sample rate in Hz (default 10000).
         """
         nyquist = fs / 2.0
         hp = min(200.0, nyquist * 0.08)
@@ -116,7 +116,8 @@ class SpikeDetectionParams:
         if self.diff_order not in (0, 1, 2):
             raise ValueError(
                 f"diff_order must be 0, 1, or 2, got {self.diff_order}. "
-                "Use 0 for no differentiation, 1 for first derivative (recommended), "
+                "Use 0 for no differentiation, "
+                "1 for first derivative (recommended), "
                 "or 2 for second derivative."
             )
         if self.polarity not in (-1, 1):
@@ -145,7 +146,9 @@ class SpikeDetectionParams:
         if self.spike_template is not None:
             d["spike_template"] = self.spike_template.tolist()
         if self.likely_inflection_point_peak is not None:
-            d["likely_inflection_point_peak"] = self.likely_inflection_point_peak
+            d["likely_inflection_point_peak"] = (
+                self.likely_inflection_point_peak
+            )
         return d
 
     @classmethod
@@ -213,18 +216,18 @@ class Recording:
         """Number of voltage samples."""
         return len(self.voltage)
 
-    def plot(self, show_spikes: bool = True) -> "matplotlib.figure.Figure":
+    def plot(
+        self, show_spikes: bool = True
+    ) -> "matplotlib.figure.Figure":
         """Plot the voltage trace with optional spike markers.
 
-        Parameters
-        ----------
-        show_spikes : bool
-            If True and a detection result exists, mark spike times on the trace.
+        Args:
+            show_spikes: If True and a detection result
+                exists, mark spike times on the trace.
 
-        Returns
-        -------
-        matplotlib.figure.Figure
-            The figure object. Call ``plt.show()`` to display interactively.
+        Returns:
+            The figure object. Call ``plt.show()`` to
+            display interactively.
         """
         import matplotlib.pyplot as plt
 
@@ -264,7 +267,9 @@ class SpikeDetectionResult:
 
     def __post_init__(self) -> None:
         self.spike_times = np.asarray(self.spike_times, dtype=np.int64)
-        self.spike_times_uncorrected = np.asarray(self.spike_times_uncorrected, dtype=np.int64)
+        self.spike_times_uncorrected = np.asarray(
+            self.spike_times_uncorrected, dtype=np.int64
+        )
 
     @property
     def n_spikes(self) -> int:
@@ -287,26 +292,28 @@ class SpikeDetectionResult:
             if self.n_spikes >= 2:
                 isis = np.diff(times)
                 lines.append(
-                    f"  Mean ISI: {np.mean(isis)*1000:.1f} ms "
-                    f"(range {np.min(isis)*1000:.1f} - {np.max(isis)*1000:.1f} ms)"
+                    f"  Mean ISI: "
+                    f"{np.mean(isis)*1000:.1f} ms "
+                    f"(range "
+                    f"{np.min(isis)*1000:.1f} - "
+                    f"{np.max(isis)*1000:.1f} ms)"
                 )
-                lines.append(f"  Mean firing rate: {1.0 / np.mean(isis):.1f} Hz")
+                lines.append(
+                    f"  Mean firing rate: "
+                    f"{1.0 / np.mean(isis):.1f} Hz"
+                )
         lines.append(f"  Spot-checked: {'yes' if self.spot_checked else 'no'}")
         return "\n".join(lines)
 
     def to_dataframe(self) -> "pandas.DataFrame":
         """Convert spike times to a pandas DataFrame.
 
-        Returns
-        -------
-        pandas.DataFrame
-            DataFrame with columns: spike_index, spike_time_s,
-            spike_index_uncorrected.
+        Returns:
+            DataFrame with columns: spike_index,
+            spike_time_s, spike_index_uncorrected.
 
-        Raises
-        ------
-        ImportError
-            If pandas is not installed.
+        Raises:
+            ImportError: If pandas is not installed.
         """
         try:
             import pandas as pd

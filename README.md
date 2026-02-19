@@ -31,12 +31,16 @@ pip install -e ".[dev]"    # pytest + ruff for development
 
 ```python
 import spikedetect as sd
-from spikedetect.io.mat import load_recording
 
 # Load a recording from a .mat file
-rec, params, existing_spikes = load_recording("path/to/trial.mat")
+rec = sd.load_recording("path/to/trial.mat")
 
-# Run detection with loaded parameters
+# Use params from a previous MATLAB run (if available)
+params = rec.result.params if rec.result else (
+    sd.SpikeDetectionParams.default(fs=rec.sample_rate)
+)
+
+# Run detection
 result = sd.detect_spikes(rec, params)
 print(f"Detected {result.n_spikes} spikes")
 print(f"Spike times (seconds): {result.spike_times_seconds[:10]}")
@@ -147,7 +151,7 @@ from spikedetect.io.native import save_native, load_native
 from spikedetect.io.config import save_params, load_params
 
 # MATLAB .mat files (v5, v7, and v7.3/HDF5)
-rec, params, spikes = load_recording("trial.mat")
+rec = load_recording("trial.mat")
 
 # ABF files (requires pyabf)
 rec = load_abf("recording.abf")
@@ -177,7 +181,7 @@ spikeDetection/
 │   │   ├── io/               # File I/O (mat, abf, hdf5, config)
 │   │   ├── pipeline/         # Detection pipeline modules
 │   │   └── gui/              # Interactive Matplotlib GUIs
-│   └── tests/                # 79 pytest tests
+│   └── tests/                # 135 pytest tests
 ```
 
 ## Testing
@@ -204,6 +208,8 @@ python -m pytest tests/ --cov=spikedetect --cov-report=term-missing
 - **[User Guide](docs/USER_GUIDE.md)** — Complete reference for parameters, pipeline stages, GUIs, I/O, and batch processing
 - **[Changelog](docs/CHANGELOG.md)** — Quality-of-life improvements, bug fixes, and what's new vs MATLAB
 - **[Migration Guide](spikedetect/MIGRATION_GUIDE.md)** — MATLAB-to-Python function mapping
+- **[Data Format Spec](spikedetect/DATA_FORMAT_SPEC.md)** — IO specification for writing data translators
+- **[Cross-Validation Report](CROSS_VALIDATION_REPORT.md)** — Step-by-step MATLAB vs Python comparison
 
 Key differences from MATLAB:
 - **No global state** — parameters are passed explicitly, not via `global vars`

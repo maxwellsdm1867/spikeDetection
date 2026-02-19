@@ -18,7 +18,7 @@ try:
     from numba import njit as _njit
 
     _HAS_NUMBA = True
-except Exception:  # pragma: no cover  # numba may fail with numpy version mismatch
+except Exception:  # pragma: no cover  # noqa: BLE001
     _HAS_NUMBA = False
 
     def _njit(func=None, **kwargs):  # type: ignore[misc]
@@ -52,9 +52,11 @@ class DTW:
     Ports MATLAB ``dtw_WarpingDistance.m``. Uses a custom implementation
     because standard DTW libraries use the wrong cost metric.
 
-    Examples
-    --------
-    >>> dist, rw, tw = DTW.warping_distance(signal_a, signal_b)
+    Example::
+
+        >>> dist, rw, tw = DTW.warping_distance(
+        ...     signal_a, signal_b,
+        ... )
     """
 
     @staticmethod
@@ -62,27 +64,19 @@ class DTW:
         r: np.ndarray,
         t: np.ndarray,
     ) -> tuple[float, np.ndarray, np.ndarray]:
-        """Compute DTW distance with squared-Euclidean local cost.
+        """Compute DTW distance with squared-Euclidean cost.
 
-        Parameters
-        ----------
-        r : np.ndarray
-            Reference signal (1-D).
-        t : np.ndarray
-            Test signal (1-D).
+        Args:
+            r: Reference signal (1-D).
+            t: Test signal (1-D).
 
-        Returns
-        -------
-        distance : float
-            Accumulated DTW distance (unnormalised).
-        warped_r : np.ndarray
-            Reference signal values along the optimal warping path.
-        warped_t : np.ndarray
-            Test signal values along the optimal warping path.
-
-        Notes
-        -----
-        Original MATLAB function: ``dtw_WarpingDistance.m``
+        Returns:
+            A tuple of ``(distance, warped_r, warped_t)``
+            where *distance* is the accumulated DTW
+            distance (unnormalised), *warped_r* contains
+            the reference signal values along the optimal
+            warping path, and *warped_t* contains the test
+            signal values along the optimal warping path.
         """
         r = np.asarray(r, dtype=np.float64).ravel()
         t = np.asarray(t, dtype=np.float64).ravel()
@@ -127,15 +121,13 @@ class DTW:
     def cost_matrix(r: np.ndarray, t: np.ndarray) -> np.ndarray:
         """Compute the accumulated cost matrix.
 
-        Parameters
-        ----------
-        r, t : np.ndarray
-            1-D signals.
+        Args:
+            r: Reference signal (1-D).
+            t: Test signal (1-D).
 
-        Returns
-        -------
-        np.ndarray
-            Accumulated cost matrix of shape ``(len(r), len(t))``.
+        Returns:
+            Accumulated cost matrix of shape
+            ``(len(r), len(t))``.
         """
         return _dtw_cost_matrix(
             np.asarray(r, dtype=np.float64).ravel(),

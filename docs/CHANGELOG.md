@@ -9,8 +9,10 @@ Python refactor of the [MATLAB spikeDetection](https://github.com/tony-azevedo/s
 - **No global state** -- parameters are passed explicitly as `SpikeDetectionParams`, not via MATLAB `global vars`
 - **Pip-installable** -- `pip install -e .` with optional extras for numba acceleration and ABF/HDF5 I/O
 - **Class-based API** -- all pipeline stages are classes with static methods (`SignalFilter`, `PeakFinder`, `TemplateMatcher`, etc.) plus backwards-compatible function aliases
-- **79 automated tests** covering all pipeline stages, I/O, and end-to-end detection
-- **Cross-validated** against MATLAB output on real electrophysiology data
+- **135 automated tests** covering all pipeline stages, I/O, cross-validation against MATLAB, and end-to-end detection
+- **Cross-validated** against MATLAB output on real electrophysiology data (see `CROSS_VALIDATION_REPORT.md` for 18-test step-by-step comparison of every intermediate variable)
+- **Data format specification** (`DATA_FORMAT_SPEC.md`) for writing translators from any acquisition frontend
+- **Google Python Style Guide** compliance (docstrings, line length, naming)
 
 ---
 
@@ -138,7 +140,7 @@ import spikedetect as sd
 
 rec = sd.load_recording("trial.mat")    # no need to import from sd.io.mat
 rec = sd.load_abf("recording.abf")     # no need to import from sd.io.abf
-sd.save_result("output.mat", rec, res) # no need to import from sd.io.mat
+sd.save_result("output.mat", rec)      # no need to import from sd.io.mat
 ```
 
 ---

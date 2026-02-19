@@ -19,7 +19,9 @@ from spikedetect.gui.filter_gui import FilterGUI
 from spikedetect.gui.template_gui import TemplateSelectionGUI
 from spikedetect.gui.threshold_gui import ThresholdGUI
 from spikedetect.gui.spotcheck_gui import SpotCheckGUI
-from spikedetect.models import Recording, SpikeDetectionParams, SpikeDetectionResult
+from spikedetect.models import (
+    Recording, SpikeDetectionParams, SpikeDetectionResult,
+)
 from spikedetect.pipeline.detect import SpikeDetector
 from spikedetect.pipeline.filtering import SignalFilter
 from spikedetect.pipeline.peaks import PeakFinder
@@ -33,10 +35,9 @@ def _ask_done() -> bool:
 
     Mirrors MATLAB ``questdlg('Done with spike detection?', ...)``.
 
-    Returns
-    -------
-    bool
-        True if the user clicks Yes or closes the figure, False if No.
+    Returns:
+        True if the user clicks Yes or closes the figure,
+        False if No.
     """
     result = {"done": True}
 
@@ -103,22 +104,19 @@ class InteractiveWorkflow:
     ) -> tuple[SpikeDetectionResult, SpikeDetectionParams]:
         """Run the full interactive workflow.
 
-        Parameters
-        ----------
-        recording : Recording
-            The electrophysiology recording to analyze.
-        params : SpikeDetectionParams, optional
-            Initial detection parameters. If None, creates defaults
-            from ``recording.sample_rate``.
-        spot_check : bool, optional
-            If True (default), run SpotCheckGUI after the detection loop.
+        Args:
+            recording: The electrophysiology recording to
+                analyze.
+            params: Initial detection parameters. If None,
+                creates defaults from ``recording.sample_rate``.
+            spot_check: If True (default), run SpotCheckGUI
+                after the detection loop.
 
-        Returns
-        -------
-        result : SpikeDetectionResult
-            Final detection result (spot-checked if ``spot_check=True``).
-        params : SpikeDetectionParams
-            Final parameters after all user adjustments.
+        Returns:
+            A tuple of (result, params) where result is the
+            final detection result (spot-checked if
+            ``spot_check=True``) and params is the final
+            parameters after all user adjustments.
         """
         if params is None:
             params = SpikeDetectionParams.default(fs=recording.sample_rate)
@@ -217,7 +215,8 @@ class InteractiveWorkflow:
             result = spotcheck_gui.run()
 
         if result is None:
-            # No detection was ever run (edge case: user never selected template)
+            # No detection was ever run
+            # (edge case: user never selected template)
             result = SpikeDetectionResult(
                 spike_times=np.array([], dtype=np.int64),
                 spike_times_uncorrected=np.array([], dtype=np.int64),

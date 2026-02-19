@@ -18,10 +18,12 @@ class SignalFilter:
 
     Ports MATLAB ``filterDataWithSpikes.m``. All methods are static.
 
-    Examples
-    --------
-    >>> filtered = SignalFilter.filter_data(voltage, fs=10000,
-    ...     hp_cutoff=200, lp_cutoff=800, diff_order=1, polarity=-1)
+    Example::
+
+        >>> filtered = SignalFilter.filter_data(
+        ...     voltage, fs=10000, hp_cutoff=200,
+        ...     lp_cutoff=800, diff_order=1, polarity=-1,
+        ... )
     """
 
     @staticmethod
@@ -33,32 +35,25 @@ class SignalFilter:
         diff_order: int = 0,
         polarity: int = 1,
     ) -> np.ndarray:
-        """Apply bandpass filter with optional differentiation and polarity flip.
+        """Apply bandpass filter with optional differentiation.
 
-        Parameters
-        ----------
-        unfiltered_data : np.ndarray
-            Raw 1-D voltage trace.
-        fs : float
-            Sampling rate in Hz.
-        hp_cutoff : float
-            High-pass filter cutoff frequency in Hz.
-        lp_cutoff : float
-            Low-pass filter cutoff frequency in Hz.
-        diff_order : int, optional
-            Derivative order applied after filtering (0, 1, or 2). Default 0.
-        polarity : int, optional
-            Multiply output by this (+1 or -1). Default 1.
+        Args:
+            unfiltered_data: Raw 1-D voltage trace.
+            fs: Sampling rate in Hz.
+            hp_cutoff: High-pass cutoff frequency in Hz.
+            lp_cutoff: Low-pass cutoff frequency in Hz.
+            diff_order: Derivative order applied after
+                filtering (0, 1, or 2). Default 0.
+            polarity: Multiply output by this (+1 or -1).
+                Default 1.
 
-        Returns
-        -------
-        np.ndarray
-            Filtered 1-D float64 array, same length as input.
+        Returns:
+            Filtered 1-D float64 array, same length as
+            input.
 
-        Notes
-        -----
-        Uses ``scipy.signal.lfilter`` (causal), NOT ``filtfilt``.
-        Original MATLAB function: ``filterDataWithSpikes.m``
+        Note:
+            Uses ``scipy.signal.lfilter`` (causal), NOT
+            ``filtfilt``.
         """
         data = np.asarray(unfiltered_data, dtype=np.float64).ravel()
         if len(data) == 0:
@@ -102,27 +97,23 @@ class SignalFilter:
         cutoff: float = 3000.0,
         order: int = 12,
     ) -> np.ndarray:
-        """Apply a low-pass pre-filter to raw voltage before spike detection.
+        """Apply a low-pass pre-filter before spike detection.
 
-        Ports MATLAB ``lowPassFilterMembraneVoltage.m``. Subtracts the first
-        sample (DC baseline) before filtering and adds it back afterwards,
-        matching the MATLAB ``filter(d1, v - base) + base`` pattern.
+        Subtracts the first sample (DC baseline) before
+        filtering and adds it back afterwards, matching the
+        MATLAB ``filter(d1, v - base) + base`` pattern.
 
-        Parameters
-        ----------
-        voltage : np.ndarray
-            Raw 1-D voltage trace.
-        fs : float
-            Sampling rate in Hz.
-        cutoff : float, optional
-            Low-pass cutoff frequency in Hz. Default 3000.
-        order : int, optional
-            Butterworth filter order. Default 12 (matches MATLAB ``designfilt``).
+        Args:
+            voltage: Raw 1-D voltage trace.
+            fs: Sampling rate in Hz.
+            cutoff: Low-pass cutoff frequency in Hz.
+                Default 3000.
+            order: Butterworth filter order. Default 12
+                (matches MATLAB ``designfilt``).
 
-        Returns
-        -------
-        np.ndarray
-            Low-pass filtered 1-D float64 array, same length as input.
+        Returns:
+            Low-pass filtered 1-D float64 array, same
+            length as input.
         """
         data = np.asarray(voltage, dtype=np.float64).ravel()
         if len(data) == 0:

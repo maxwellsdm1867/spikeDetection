@@ -220,7 +220,9 @@ class TestTemplateSelectionGUI:
         template = gui._build_template()
         assert template is None
 
-    def test_build_template_with_selection(self, filtered, params, synthetic_data):
+    def test_build_template_with_selection(
+        self, filtered, params, synthetic_data,
+    ):
         filt, _ = filtered
         _, fs, positions = synthetic_data
         start_point = round(0.01 * fs)
@@ -245,7 +247,11 @@ class TestTemplateSelectionGUI:
 
         # Create a mock pick event
         class MockMouseEvent:
-            xdata = float(gui._peak_locs[0]) if len(gui._peak_locs) > 0 else 100.0
+            xdata = (
+                float(gui._peak_locs[0])
+                if len(gui._peak_locs) > 0
+                else 100.0
+            )
 
         class MockEvent:
             artist = True
@@ -289,7 +295,9 @@ class TestThresholdGUI:
         gui._toggle_active()
         assert gui._active_threshold == "distance"
 
-    def test_on_click_updates_distance_threshold(self, match_result, params_with_template):
+    def test_on_click_updates_distance_threshold(
+        self, match_result, params_with_template,
+    ):
         gui = ThresholdGUI(match_result, params_with_template)
         gui._build_figure()
         gui._update_panels()
@@ -302,7 +310,9 @@ class TestThresholdGUI:
         gui._on_click(MockEvent())
         assert gui.params.distance_threshold == 5.0
 
-    def test_on_click_updates_amplitude_threshold(self, match_result, params_with_template):
+    def test_on_click_updates_amplitude_threshold(
+        self, match_result, params_with_template,
+    ):
         gui = ThresholdGUI(match_result, params_with_template)
         gui._build_figure()
         gui._update_panels()

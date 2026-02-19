@@ -20,7 +20,11 @@ To see pipeline progress, enable logging::
 """
 
 from spikedetect.io import load_recording, load_abf, save_result
-from spikedetect.models import Recording, SpikeDetectionParams, SpikeDetectionResult
+from spikedetect.models import (
+    Recording,
+    SpikeDetectionParams,
+    SpikeDetectionResult,
+)
 from spikedetect.pipeline.classify import SpikeClassifier
 from spikedetect.pipeline.detect import SpikeDetector, detect_spikes
 from spikedetect.pipeline.dtw import DTW

@@ -3,7 +3,11 @@
 import numpy as np
 import pytest
 
-from spikedetect.models import Recording, SpikeDetectionParams, SpikeDetectionResult
+from spikedetect.models import (
+    Recording,
+    SpikeDetectionParams,
+    SpikeDetectionResult,
+)
 
 
 class TestSpikeDetectionParams:
@@ -112,9 +116,13 @@ class TestSpikeDetectionParams:
         assert restored.lp_cutoff == original.lp_cutoff
         assert restored.diff_order == original.diff_order
         assert restored.polarity == original.polarity
-        assert restored.likely_inflection_point_peak == original.likely_inflection_point_peak
+        assert (restored.likely_inflection_point_peak
+                == original.likely_inflection_point_peak)
         assert restored.last_filename == original.last_filename
-        np.testing.assert_array_equal(restored.spike_template, original.spike_template)
+        np.testing.assert_array_equal(
+            restored.spike_template,
+            original.spike_template,
+        )
 
     def test_from_dict_minimal(self):
         d = {"fs": 10000}
@@ -147,7 +155,10 @@ class TestRecording:
     def test_current_coerced(self):
         voltage = np.array([1.0, 2.0])
         current = np.array([0.1, 0.2], dtype=np.float32)
-        rec = Recording(name="test", voltage=voltage, sample_rate=10000, current=current)
+        rec = Recording(
+            name="test", voltage=voltage,
+            sample_rate=10000, current=current,
+        )
         assert rec.current.dtype == np.float64
 
 

@@ -16,27 +16,23 @@ from spikedetect.models import Recording
 def load_abf(path: str | Path) -> Recording:
     """Load an ABF file into a Recording object.
 
-    Parameters
-    ----------
-    path : str or Path
-        Path to the .abf file.
+    Args:
+        path: Path to the .abf file.
 
-    Returns
-    -------
-    Recording
-        The loaded recording with voltage data from the first channel
-        and current from the second channel (if available).
+    Returns:
+        The loaded recording with voltage data from the
+        first channel and current from the second channel
+        (if available).
 
-    Raises
-    ------
-    FileNotFoundError
-        If the file does not exist.
-    ImportError
-        If the ``pyabf`` package is not installed.
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ImportError: If ``pyabf`` is not installed.
     """
     path = Path(path)
     if not path.exists():
-        raise FileNotFoundError(f"ABF file not found: {path}")
+        raise FileNotFoundError(
+            f"ABF file not found: {path}"
+        )
 
     try:
         import pyabf
@@ -56,7 +52,9 @@ def load_abf(path: str | Path) -> Recording:
     current = None
     if abf.channelCount > 1:
         abf.setSweep(0, channel=1)
-        current = np.array(abf.sweepY, dtype=np.float64)
+        current = np.array(
+            abf.sweepY, dtype=np.float64
+        )
 
     sample_rate = float(abf.dataRate)
 

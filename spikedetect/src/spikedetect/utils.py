@@ -24,50 +24,37 @@ class WaveformProcessor:
     def smooth(x: np.ndarray, window_size: int) -> np.ndarray:
         """Moving average smoothing (MATLAB ``smooth`` equivalent).
 
-        Parameters
-        ----------
-        x : np.ndarray
-            1-D input array.
-        window_size : int
-            Number of samples in the moving-average window.
-
-        Returns
-        -------
-        np.ndarray
-            Smoothed 1-D float64 array with the same length as *x*.
-
-        Notes
-        -----
         Uses ``scipy.ndimage.uniform_filter1d`` with ``mode='nearest'`` to
         match MATLAB's ``smooth`` boundary handling.
+
+        Args:
+            x: 1-D input array.
+            window_size: Number of samples in the moving-average window.
+
+        Returns:
+            Smoothed 1-D float64 array with the same length as *x*.
         """
         return uniform_filter1d(
             np.asarray(x, dtype=np.float64), size=window_size, mode="nearest"
         )
 
     @staticmethod
-    def smooth_and_differentiate(waveform: np.ndarray, smooth_window: int) -> np.ndarray:
+    def smooth_and_differentiate(
+        waveform: np.ndarray, smooth_window: int
+    ) -> np.ndarray:
         """Smooth and compute the 2nd derivative of a spike waveform.
 
         Applies sequential diff-smooth-diff-smooth operations to extract a
         smoothed second derivative, suitable for inflection-point estimation.
-
-        Parameters
-        ----------
-        waveform : np.ndarray
-            1-D spike waveform (voltage vs. time).
-        smooth_window : int
-            Window size for moving-average smoothing steps.
-
-        Returns
-        -------
-        np.ndarray
-            Smoothed second derivative, same length as *waveform*.  The first
-            two samples are zero (padding to preserve alignment).
-
-        Notes
-        -----
         Direct port of MATLAB ``smoothAndDifferentiate.m``.
+
+        Args:
+            waveform: 1-D spike waveform (voltage vs. time).
+            smooth_window: Window size for moving-average smoothing steps.
+
+        Returns:
+            Smoothed second derivative, same length as *waveform*. The first
+            two samples are zero (padding to preserve alignment).
         """
         w = np.asarray(waveform, dtype=np.float64)
         if len(w) < 4:
@@ -89,23 +76,15 @@ class WaveformProcessor:
 
         Similar to :meth:`smooth_and_differentiate` but without the
         intermediate smoothing step between the two ``diff`` operations,
-        and enforces a minimum smooth window of 5.
+        and enforces a minimum smooth window of 5. Direct port of MATLAB
+        ``Differentiate.m``.
 
-        Parameters
-        ----------
-        waveform : np.ndarray
-            1-D spike waveform (voltage vs. time).
-        smooth_window : int
-            Window size for the final moving-average smoothing.
+        Args:
+            waveform: 1-D spike waveform (voltage vs. time).
+            smooth_window: Window size for the final moving-average smoothing.
 
-        Returns
-        -------
-        np.ndarray
+        Returns:
             Smoothed second derivative, same length as *waveform*.
-
-        Notes
-        -----
-        Direct port of MATLAB ``Differentiate.m``.
         """
         w = np.asarray(waveform, dtype=np.float64)
         if len(w) < 4:

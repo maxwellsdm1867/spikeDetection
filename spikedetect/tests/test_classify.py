@@ -10,7 +10,9 @@ class TestClassifySpikes:
         distances = np.array([1.0, 2.0, 3.0, 1.5, 2.5])
         amplitudes = np.array([5.0, 6.0, 7.0, 5.5, 6.5])
         good, weird, weirdbad, bad = classify_spikes(
-            distances, amplitudes, distance_threshold=10.0, amplitude_threshold=1.0
+            distances, amplitudes,
+            distance_threshold=10.0,
+            amplitude_threshold=1.0,
         )
         # All should be in the good quadrant (good or weird)
         assert np.all(good | weird)
@@ -20,7 +22,9 @@ class TestClassifySpikes:
         distances = np.array([])
         amplitudes = np.array([])
         good, weird, weirdbad, bad = classify_spikes(
-            distances, amplitudes, distance_threshold=10.0, amplitude_threshold=1.0
+            distances, amplitudes,
+            distance_threshold=10.0,
+            amplitude_threshold=1.0,
         )
         assert len(good) == 0
         assert len(weird) == 0
@@ -31,7 +35,9 @@ class TestClassifySpikes:
         distances = np.array([20.0, 30.0, 40.0])
         amplitudes = np.array([-1.0, -2.0, -3.0])
         good, weird, weirdbad, bad = classify_spikes(
-            distances, amplitudes, distance_threshold=10.0, amplitude_threshold=1.0
+            distances, amplitudes,
+            distance_threshold=10.0,
+            amplitude_threshold=1.0,
         )
         assert not np.any(good)
         assert not np.any(weird)
@@ -43,7 +49,9 @@ class TestClassifySpikes:
         distances = rng.uniform(0, 30, 100)
         amplitudes = rng.uniform(-2, 10, 100)
         good, weird, weirdbad, bad = classify_spikes(
-            distances, amplitudes, distance_threshold=15.0, amplitude_threshold=0.5
+            distances, amplitudes,
+            distance_threshold=15.0,
+            amplitude_threshold=0.5,
         )
         # Every spike should appear in at least one category
         covered = good | weird | weirdbad | bad
@@ -53,17 +61,21 @@ class TestClassifySpikes:
         distances = np.array([5.0])
         amplitudes = np.array([3.0])
         good, weird, weirdbad, bad = classify_spikes(
-            distances, amplitudes, distance_threshold=10.0, amplitude_threshold=1.0
+            distances, amplitudes,
+            distance_threshold=10.0,
+            amplitude_threshold=1.0,
         )
         assert len(good) == 1
-        # Single spike in good quadrant should be good (not weird since quantile edge cases)
+        # Single spike in good quadrant should be good
         assert good[0] or weird[0]
 
     def test_weirdbad_high_distance_high_amplitude(self):
         distances = np.array([1.0, 2.0, 20.0])
         amplitudes = np.array([5.0, 6.0, 5.0])
         good, weird, weirdbad, bad = classify_spikes(
-            distances, amplitudes, distance_threshold=10.0, amplitude_threshold=1.0
+            distances, amplitudes,
+            distance_threshold=10.0,
+            amplitude_threshold=1.0,
         )
-        # The third spike (high distance, high amplitude) should be weirdbad
+        # Third spike (high distance, high amplitude) = weirdbad
         assert weirdbad[2]

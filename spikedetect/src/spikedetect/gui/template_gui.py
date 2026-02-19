@@ -21,20 +21,14 @@ from spikedetect.pipeline.peaks import find_spike_locations
 class TemplateSelectionGUI:
     """Interactive GUI for selecting seed spikes and building a template.
 
-    Parameters
-    ----------
-    filtered_data : np.ndarray
-        1-D bandpass-filtered voltage trace.
-    params : SpikeDetectionParams
-        Current detection parameters (must have ``fs`` and
-        ``spike_template_width`` set).
+    Args:
+        filtered_data: 1-D bandpass-filtered voltage trace.
+        params: Current detection parameters (must have ``fs``
+            and ``spike_template_width`` set).
 
-    Attributes
-    ----------
-    params : SpikeDetectionParams
-        Detection parameters (read-only reference).
-    fig : matplotlib.figure.Figure
-        The GUI figure.
+    Attributes:
+        params: Detection parameters (read-only reference).
+        fig: The GUI figure.
     """
 
     def __init__(
@@ -48,11 +42,9 @@ class TemplateSelectionGUI:
     def run(self) -> np.ndarray | None:
         """Display the GUI and block until the user presses Enter.
 
-        Returns
-        -------
-        np.ndarray or None
-            The averaged spike template waveform, or None if no spikes
-            were selected.
+        Returns:
+            The averaged spike template waveform, or None if no
+            spikes were selected.
         """
         self._build_figure()
 
@@ -162,7 +154,8 @@ class TemplateSelectionGUI:
         # Extract wide waveforms for alignment
         seeds = []
         for loc in self._selected_indices:
-            if loc + wide_window[0] >= 0 and loc + wide_window[-1] < len(self._filtered):
+            if (loc + wide_window[0] >= 0
+                    and loc + wide_window[-1] < len(self._filtered)):
                 seeds.append(self._filtered[loc + wide_window])
 
         if len(seeds) == 0:
@@ -182,8 +175,9 @@ class TemplateSelectionGUI:
                     aligned[r, best_lag:] = seeds[r, : len(seeds[r]) - best_lag]
                     aligned[r, :best_lag] = seeds[r, 0]
                 elif best_lag < 0:
-                    aligned[r, : len(seeds[r]) + best_lag] = seeds[r, -best_lag:]
-                    aligned[r, len(seeds[r]) + best_lag :] = seeds[r, -1]
+                    end = len(seeds[r]) + best_lag
+                    aligned[r, :end] = seeds[r, -best_lag:]
+                    aligned[r, end:] = seeds[r, -1]
             avg = np.mean(aligned, axis=0)
         else:
             avg = seeds[0]

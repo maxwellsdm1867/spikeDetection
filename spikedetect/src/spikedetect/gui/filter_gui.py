@@ -22,22 +22,20 @@ from spikedetect.pipeline.peaks import find_spike_locations
 class FilterGUI:
     """Interactive GUI for tuning filter and peak-detection parameters.
 
-    Parameters
-    ----------
-    unfiltered_data : np.ndarray
-        Raw 1-D voltage trace.
-    params : SpikeDetectionParams
-        Initial detection parameters.
+    Args:
+        unfiltered_data: Raw 1-D voltage trace.
+        params: Initial detection parameters.
 
-    Attributes
-    ----------
-    params : SpikeDetectionParams
-        Current parameters (updated by sliders).
-    fig : matplotlib.figure.Figure
-        The GUI figure.
+    Attributes:
+        params: Current parameters (updated by sliders).
+        fig: The GUI figure.
     """
 
-    def __init__(self, unfiltered_data: np.ndarray, params: SpikeDetectionParams) -> None:
+    def __init__(
+        self,
+        unfiltered_data: np.ndarray,
+        params: SpikeDetectionParams,
+    ) -> None:
         self._unfiltered = np.asarray(unfiltered_data, dtype=np.float64).ravel()
         self.params = deepcopy(params)
         self.fig = None
@@ -45,12 +43,11 @@ class FilterGUI:
         self._locs = None
 
     def run(self) -> SpikeDetectionParams:
-        """Display the GUI and block until the user presses Enter or closes.
+        """Display the GUI and block until the user presses Enter.
 
-        Returns
-        -------
-        SpikeDetectionParams
-            Updated parameters reflecting the user's slider choices.
+        Returns:
+            Updated parameters reflecting the user's slider
+            choices.
         """
         self._apply_filter()
         self._build_figure()

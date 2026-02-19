@@ -271,7 +271,8 @@ params = load_params("experiment_001")
 ```python
 from spikedetect.io.mat import save_result
 
-save_result("trial_with_spikes.mat", rec, result)
+rec.result = result
+save_result("trial_with_spikes.mat", rec)
 ```
 
 ### Save in native HDF5 format

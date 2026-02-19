@@ -88,7 +88,7 @@ python -c "import spikedetect; print(spikedetect.__version__)"
 
 # Full verification (run tests)
 cd spikedetect && python -m pytest tests/ -v
-# Should show: 79 passed
+# Should show: 135 passed
 ```
 
 ## Build and Test Commands
@@ -166,15 +166,37 @@ filtered = filter_data(voltage, fs=10000, hp_cutoff=200, lp_cutoff=800)
 - MATLAB `smooth(x, n)` → `scipy.ndimage.uniform_filter1d(x, size=n, mode='nearest')`
 - MATLAB `filter(b, a, x)` → `scipy.signal.lfilter(b, a, x)` (causal, NOT `filtfilt`)
 - DTW uses squared-Euclidean cost `(r[i] - t[j])^2`, not absolute difference
-- MATLAB 1-based indexing converted to Python 0-based throughout
+- MATLAB 1-based indexing converted to Python 0-based throughout — especially tricky in `inflection.py` where MATLAB `(idx_i:end-idx_f)` (1-based inclusive) becomes `[idx_i-1:len-idx_f]` (0-based)
 - `SpikeDetectionParams` dataclass replaces the MATLAB global `vars` struct
 - JSON persistence in `~/.spikedetect/` replaces MATLAB `setacqpref`/`getacqpref`
 
+### Cross-Validation Against MATLAB
+
+The Python pipeline has been rigorously cross-validated against the original MATLAB code using a step-by-step comparison of all intermediate variables (see `CROSS_VALIDATION_REPORT.md`). Key findings:
+
+- **Filtering, peak detection, DTW distances, thresholds**: exact or near-exact match
+- **Spike detection (which spikes, where)**: identical (296/296 peaks at the same sample indices)
+- **Spike time correction**: median 2-sample (40 us) jitter, max 11 samples (220 us) — inherent to the smoothed-2nd-derivative algorithm, not a porting bug
+- **Systematic bias**: -1.29 samples mean offset (26 us), constant across all spikes, caused by a 1-sample inflection point difference. Scientifically negligible.
+
+The cross-validation test suite (`test_cross_validation.py`, 18 tests) loads MATLAB intermediates from `cross_validation_intermediates.mat` and verifies each pipeline stage independently.
+
 ### Test Data
 
-`LEDFlashTriggerPiezoControl_Raw_240430_F1_C1_5.mat` — Real recording (50kHz, 400k samples, 296 MATLAB-detected spikes) used as golden standard for cross-validation in `test_io.py`.
+- `LEDFlashTriggerPiezoControl_Raw_240430_F1_C1_5.mat` — Real recording (50kHz, 400k samples, 296 MATLAB-detected spikes) used as golden standard
+- `cross_validation_intermediates.mat` — 36 intermediate variables exported from the MATLAB pipeline for step-by-step comparison
 
 ## Directory Layout
 
 - `spikedetect/` — Python package (installable via pip)
+- `matlab_reference/` — Original MATLAB code for reference
+  - `functions/` — MATLAB pipeline functions
+  - `utils/` — MATLAB utility functions
+  - `scripts/cross_validate_pipeline.m` — Script to regenerate cross-validation intermediates
+- `cross_validation_intermediates.mat` — MATLAB pipeline intermediates for cross-validation tests
+- `CROSS_VALIDATION_REPORT.md` — Detailed cross-validation findings
 - `LICENSE` — Project license
+
+Key documentation inside `spikedetect/`:
+- `DATA_FORMAT_SPEC.md` — Formal IO specification: data models, file formats, and how to write a translator from any acquisition frontend
+- `MIGRATION_GUIDE.md` — MATLAB-to-Python function/parameter mapping

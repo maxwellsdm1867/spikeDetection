@@ -420,7 +420,8 @@ rec = sd.load_recording("trial.mat")
 
 # Save results back
 from spikedetect.io.mat import save_result
-save_result("trial_updated.mat", rec, result)
+rec.result = result
+save_result("trial_updated.mat", rec)
 ```
 
 ### ABF files (Axon Binary Format)
@@ -573,7 +574,8 @@ import spikedetect as sd
 sd.detect_spikes(recording, params)    # Run full pipeline
 sd.load_recording("file.mat")         # Load .mat file
 sd.load_abf("file.abf")              # Load ABF file
-sd.save_result("file.mat", rec, res)  # Save results to .mat
+rec.result = res
+sd.save_result("file.mat", rec)      # Save results to .mat
 ```
 
 ### Classes
